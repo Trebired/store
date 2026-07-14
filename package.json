@@ -4,7 +4,8 @@
   },
   "dependencies": {
     "@trebired/logger-adapter": "^0.2.2",
-    "@trebired/result": "^0.2.0"
+    "@trebired/result": "^0.2.0",
+    "pg": "^8.22.0"
   },
   "description": "Reusable generic entity store for Bun and Node.js with typed entity registries, scoped JSONB storage, modes, request loaders, cache invalidation, and sub-entity reads.",
   "devDependencies": {
@@ -12,7 +13,6 @@
     "@types/bun": "1.3.4",
     "@types/node": "24.10.1",
     "@types/pg": "^8.20.0",
-    "pg": "^8.22.0",
     "typescript": "6.0.2"
   },
   "engines": {
@@ -35,12 +35,14 @@
   "imports": {
     "#11ugze89y924": "./.tmp/verify-pack/consumer/index.ts",
     "#1e65qk7we0f3": "./src/enricher/builder.ts",
+    "#1u8d84lj7wzq": "./src/runtime/store-runtime.ts",
     "#3g4yh2ypwm1t": "./test/specs/subentity.spec.ts",
     "#3rm4j57116nj": "./scripts/prepare-dist.mjs",
     "#3ug859kbex8c": "./src/logging.ts",
     "#44o0z05ifdgn": "./src/core/result.ts",
     "#4f4sym6qlwt3": "./src/records/views.ts",
     "#613yyghfyv0a": "./src/core/enriched.ts",
+    "#63uidh5cqxke": "./src/runtime/boot.ts",
     "#8pewakkhamie": "./src/entity/registry.ts",
     "#a8a6v712yhzg": "./examples/basic.ts",
     "#b4e4gjc7njzb": "./src/core/read.ts",
@@ -52,15 +54,19 @@
     "#gpaizcbh8900": "./src/core/runtime.ts",
     "#index": "./src/index.ts",
     "#jk4ufstswpvh": "./src/repair/orphans.ts",
+    "#k6jeu3jyjwht": "./src/runtime/postgres.ts",
     "#l51pnb6j0sxx": "./src/core/write.ts",
     "#mq84z0z7glm9": "./src/storage/memory.ts",
     "#nlliejgv8p5m": "./tb.code-discipline.ts",
     "#oz5habwl5021": "./src/cache/cache.ts",
+    "#pq1c0xwc48qu": "./src/runtime/types.ts",
     "#r05cko7a02f8": "./src/core/private.ts",
     "#rc6d5lmoaws9": "./examples/postgres.ts",
     "#rzbzgbo1ebc2": "./test/specs/postgres.spec.ts",
     "#tfz0p9tqi4ox": "./test/specs/store.spec.ts",
+    "#u0w09xmglhng": "./src/runtime/memo.ts",
     "#w3sf7ae6e20y": "./test/specs/enriched.spec.ts",
+    "#wwir6gmfebbh": "./src/runtime/hydration.ts",
     "#xwy7fgl52hsw": "./src/core/validation.ts",
     "#y31thwq3bdf0": "./src/types.ts",
     "#zeealawo10hg": "./src/storage/postgres/validation.ts"
@@ -84,7 +90,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Trebired/store"
+    "url": "git+https://github.com/Trebired/store.git"
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json && node ./scripts/prepare-dist.mjs prepare-dist",
@@ -97,5 +103,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.3.0"
+  "version": "0.4.0"
 }

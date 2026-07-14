@@ -1,5 +1,11 @@
 export { createStore } from "./core/store.js";
 export { createModeEnricherRegistry } from "./enricher/builder.js";
+export { createStoreRuntime } from "./runtime/store-runtime.js";
+export {
+  computed,
+  countBy,
+  relation,
+} from "./runtime/hydration.js";
 export {
   defineEntityRegistry,
   resolveEntityDefinition,
@@ -22,6 +28,11 @@ export {
   validatePlaceholderOrder,
   validateSqlIdentifier,
 } from "./storage/postgres/validation.js";
+export {
+  detectQueryCaller,
+  redactDatabaseUrl,
+  validateRuntimePostgresQuery,
+} from "./runtime/postgres.js";
 
 export type {
   CreateStoreOptions,
@@ -90,3 +101,52 @@ export type {
   SubEntityRegistry,
   NormalizedStoreLogger,
 } from "./types.js";
+
+export type {
+  NormalizedRuntimeConfig,
+  RuntimeBootAction,
+  RuntimeBootActionContext,
+  RuntimeBootCondition,
+  RuntimeBootEntityResult,
+  RuntimeBootFailure,
+  RuntimeBootFix,
+  RuntimeBootResult,
+  RuntimeBootSkipped,
+  RuntimeComputedHydration,
+  RuntimeCountHydration,
+  RuntimeEntityDefinition,
+  RuntimeEntityModeDefinition,
+  RuntimeEntityRegistry,
+  RuntimeFollowUp,
+  RuntimeFollowUpConfig,
+  RuntimeFollowUpRegistry,
+  RuntimeHydrationApi,
+  RuntimeHydrationDeclaration,
+  RuntimeHydrationMap,
+  RuntimeHydrationSet,
+  RuntimeL1MemoOptions,
+  RuntimeLegacyHookAdapter,
+  RuntimeMemoInspection,
+  RuntimeMemoReadKeyInput,
+  RuntimePostgresClient,
+  RuntimePostgresIndex,
+  RuntimePostgresMigration,
+  RuntimePostgresMigrationApi,
+  RuntimePostgresQueryOptions,
+  RuntimeQueuedFollowUp,
+  RuntimeRelationHydration,
+  RuntimeRemoteInvalidationAdapter,
+  RuntimeRewrite,
+  RuntimeRewriteRegistry,
+  StoreRuntimeBootOptions,
+  StoreRuntimeCreateOptions,
+  StoreRuntimeEvents,
+  StoreRuntimeFacade,
+  StoreRuntimeMemo,
+  StoreRuntimeMemoOptions,
+  StoreRuntimeModeOptions,
+  StoreRuntimePostgres,
+  StoreRuntimePostgresOptions,
+  StoreRuntimePostgresPoolOptions,
+  StoreRuntimeWriteEvent,
+} from "./runtime/types.js";

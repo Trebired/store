@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0
+
+- Added `createStoreRuntime(...)`, a high-level runtime facade that exposes entity, cache, records, repair, sub-entity, Postgres, memo, and boot APIs from one package-owned bootstrap.
+- Added runtime-owned PostgreSQL pool/query/init support with query safety validation, redacted URL logging, caller metadata, schema/table creation, default JSONB GIN indexes, expression indexes, and migration hooks.
+- Added a generic boot reconciliation runner with matching conditions, nested field reads, set/set-if-missing/unset, rewrites, follow-up queues, skip rules, and structured boot summaries.
+- Added runtime memo caching with stable read keys, ignored request/runtime keys, L1 TTL/max-entry support, optional L2, in-flight de-duplication, entity versioning, invalidation, and optional remote invalidation.
+- Added declarative hydration builders for relation, count, and computed mode enrichment, while preserving hook loading and legacy hook adapters for complex host-owned behavior.
+- Moved `pg` to runtime dependencies because the runtime now owns explicit PostgreSQL pool creation.
+
 ## 0.3.0
 
 - Added generic record views with discriminator-scoped reads, normalized writes, default values, sort/limit read options, unique upsert, and enforced enriched-record safeguards.

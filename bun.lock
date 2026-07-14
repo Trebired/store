@@ -7,13 +7,13 @@
       "dependencies": {
         "@trebired/logger-adapter": "^0.2.2",
         "@trebired/result": "^0.2.0",
+        "pg": "^8.22.0",
       },
       "devDependencies": {
         "@trebired/code-discipline": "^3.2.1",
         "@types/bun": "1.3.4",
         "@types/node": "24.10.1",
         "@types/pg": "^8.20.0",
-        "pg": "^8.22.0",
         "typescript": "6.0.2",
       },
     },

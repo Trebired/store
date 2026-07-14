@@ -7,6 +7,8 @@ Reusable generic entity store for Bun and Node.js applications, with typed entit
 It owns:
 
 - entity registry resolution
+- high-level store runtime bootstrap
+- PostgreSQL pool, query, and schema/table initialization
 - scoped entity reads and writes
 - storage adapter contracts
 - PostgreSQL JSONB storage
@@ -17,6 +19,7 @@ It owns:
 - request-scoped loaders with `AsyncLocalStorage`
 - discriminator-based record views over shared physical entities
 - bulk removal and generic orphan/duplicate repair helpers
+- boot reconciliation, declarative hydration, and runtime memo caching
 - generic sub-entity execution
 - stable result/error envelopes
 - optional Trebired logger-adapter integration
@@ -127,7 +130,165 @@ Hosts can also pass `loggerAdapter` for a custom sink. The package emits generic
 
 ## Core API
 
-The primary factory is `createStore(options)`.
+The high-level factory is `createStoreRuntime(options)`.
+
+```ts
+import {
+  computed,
+  countBy,
+  createStoreRuntime,
+  relation,
+} from "@trebired/store";
+
+const runtime = createStoreRuntime({
+  entities: {
+    items: {
+      table: "items",
+      aliases: ["item"],
+      required: ["workspaceId"],
+      metadata: {
+        icon: "box",
+      },
+      modes: {
+        detail: {
+          hooks: {
+            "with-label": true,
+          },
+          with: {
+            owner: relation({
+              entity: "owners",
+              id: "owner_id",
+              mode: "raw",
+              assign: "owner",
+            }),
+            children: countBy({
+              entity: "children",
+              foreignKey: "item_id",
+              localKey: "id",
+              assign: {
+                total: "children_total",
+              },
+            }),
+            url: computed((record, api) => ({
+              url: api.url(record),
+            })),
+          },
+        },
+      },
+    },
+  },
+  postgres: {
+    databaseUrl: process.env.DATABASE_URL,
+    schema: "public",
+    pool: {
+      max: 10,
+      idleTimeoutMs: 30_000,
+      connectionTimeoutMs: 5_000,
+      statementTimeoutMs: 15_000,
+    },
+    indexes: [
+      {
+        table: "items",
+        expression: "(record->>'status')",
+      },
+    ],
+    migrations: [
+      async ({ query }) => {
+        await query("select $1", ["migration-ok"]);
+      },
+    ],
+  },
+  modes: {
+    hookRoot: new URL("./entities/", import.meta.url),
+    hookFileConvention: "entity/with/name",
+    legacyHookAdapter({ hook }) {
+      return legacyHooks[hook];
+    },
+  },
+  boot: {
+    fixes: [
+      {
+        entity: "items",
+        actions: [
+          {
+            if: {
+              field: "status",
+              equals: "starting",
+            },
+            set: {
+              status: "stopped",
+            },
+            unset: [
+              "runtime.pid",
+            ],
+          },
+        ],
+      },
+    ],
+    rewrites: {
+      items: {
+        normalize(record) {
+          return record;
+        },
+      },
+    },
+    followUps: {
+      "items.ensure": async ({ record }) => {
+        console.log(record.id);
+      },
+    },
+  },
+  memo: {
+    l1: {
+      maxEntries: 500,
+      ttlMs: 30_000,
+    },
+    l2: redisLikeAdapter,
+  },
+  events: {
+    onWrite({ entity, operation }) {
+      console.log(entity, operation);
+    },
+  },
+});
+```
+
+The runtime exposes the store surface directly:
+
+```ts
+export const entity = runtime.entity;
+export const cache = runtime.cache;
+export const records = runtime.records;
+export const repair = runtime.repair;
+export const subEntity = runtime.subEntity;
+export const memo = runtime.memo;
+export const onBoot = runtime.onBoot;
+```
+
+Runtime Postgres:
+
+- creates a pool from explicit `databaseUrl` and pool options, or uses an injected client for tests and custom hosts
+- redacts database URLs in logs
+- validates application queries for empty SQL, comments, multiple statements, placeholder order, and inline read/write literals
+- logs pool creation, first connection, pool errors, slow queries, query failures, and optional operation logs
+- creates the schema, JSONB entity tables, default GIN indexes, extra expression indexes, and safe migration hooks
+- wires the package PostgreSQL JSONB adapter internally
+
+Runtime boot reconciliation supports generic `fixes` with `if`, `if_all`, nested field paths, `equals`, `equals_any`, `gt`, `set`, `set_if_missing`, `unset`, `rewrite`, `after`, `run_after_on_match`, `skip_in_developer_mode`, and `skip_in_split_dev`. The package queues and runs app-owned follow-up callbacks, but does not know what those callbacks do.
+
+Runtime memo exposes:
+
+- `runtime.memo.get(...)`
+- `runtime.memo.set(...)`
+- `runtime.memo.run(...)`
+- `runtime.memo.invalidateEntity(...)`
+- `runtime.memo.inspectRead(...)`
+- `runtime.memo.keyForRead(...)`
+- `runtime.memo.entityVersion(...)`
+
+Stable memo keys ignore request/runtime-only fields such as `req`, `res`, `meta`, `frontend`, `cacheBypass`, and `cache`.
+
+For lower-level integrations, `createStore(options)` remains available.
 
 Entity reads:
 
