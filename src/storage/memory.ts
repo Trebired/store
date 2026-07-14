@@ -63,15 +63,40 @@ function filterRows(
   context: StoreContext,
   options?: StorageReadOptions,
 ): StoreRecord[] {
-  if (options?.scope === "all") {
-    return rows;
-  }
-
-  return rows.filter((row) => (entity.definition.context || []).every((key) => row[key] === context[key]));
+  return rows.filter((row) => matchesScope(row, entity, context, options) && matchesWhere(row, options?.where || {}));
 }
 
 function matchesWhere(row: StoreRecord, where: StoreWhere): boolean {
-  return Object.entries(where).every(([key, value]) => row[key] === value);
+  return Object.entries(where).every(([key, value]) => matchesValue(row[key], value));
+}
+
+function matchesScope(
+  row: StoreRecord,
+  entity: ResolvedEntity,
+  context: StoreContext,
+  options?: StorageReadOptions,
+): boolean {
+  if (options?.scope === "all") {
+    return true;
+  }
+
+  return (entity.definition.context || []).every((key) => row[key] === context[key]);
+}
+
+function matchesValue(actual: unknown, expected: unknown): boolean {
+  if (Array.isArray(expected)) {
+    return expected.some((value) => matchesValue(actual, value));
+  }
+
+  if (isPlainObject(expected)) {
+    return isPlainObject(actual) && Object.entries(expected).every(([key, value]) => matchesValue(actual[key], value));
+  }
+
+  return actual === expected;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function clone<T extends StoreRecord>(record: T): T {

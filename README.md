@@ -134,6 +134,28 @@ Entity reads:
 - `store.entity.read.count(entity, context, options?)`
 - `store.entity.read.hasAny(entity, context, options?)`
 
+`all`, `count`, and `hasAny` accept `options.where` with the same validation as `read.by(...)`:
+
+```ts
+const activeDocuments = await store.entity.read.all("documents", {
+  workspaceId: "workspace_1",
+}, {
+  where: {
+    status: "active",
+  },
+});
+
+const hasGoldDocuments = await store.entity.read.hasAny("documents", {
+  workspaceId: "workspace_1",
+}, {
+  where: {
+    meta: {
+      tier: "gold",
+    },
+  },
+});
+```
+
 Entity writes:
 
 - `store.entity.write.put(entity, context, record, options?)`
@@ -205,7 +227,7 @@ id text primary key,
 record jsonb not null
 ```
 
-The adapter validates SQL identifiers and placeholder order, scopes reads by required context, applies required context on write, and accepts an explicit client. It does not read environment files or host configuration.
+The adapter validates SQL identifiers and placeholder order, scopes reads by required context, applies required context on write, supports `scope: "all"` with optional `where`, supports `byIds`, and accepts an explicit client. It does not read environment files or host configuration.
 
 ```ts
 import { Pool } from "pg";
@@ -244,6 +266,53 @@ const store = createStore({
 });
 ```
 
+For mode definitions made of reusable hooks, build the registry from entity config:
+
+```ts
+import { createModeEnricherRegistry } from "@trebired/store";
+
+const entities = defineEntityRegistry({
+  documents: {
+    table: "documents",
+    storage: "postgres",
+    modes: {
+      detail: {
+        hooks: {
+          "with-owner": true,
+          "with-url": true,
+        },
+      },
+    },
+  },
+});
+
+const enrichers = createModeEnricherRegistry({
+  entities,
+  getStore: () => store,
+  loadHook({ hook }) {
+    return hooks[hook];
+  },
+});
+```
+
+Hooks run sequentially in definition order and receive a read-only API:
+
+```ts
+const hooks = {
+  async "with-owner"(record, api, context) {
+    const owner = await api.readById("owners", String(record.ownerId), context.context, {
+      mode: "raw",
+    });
+
+    return {
+      ...record,
+      ownerName: owner.data?.name,
+      recorded_at: api.recorded_at,
+    };
+  },
+};
+```
+
 ## Enriched-Record Safety
 
 Non-raw read results are marked as enriched records and deep-frozen before they are returned.
@@ -257,6 +326,16 @@ Every enriched record receives:
 If persisted JSONB data already contains the enriched marker, reads fail with `store-enriched-marker-persisted`.
 
 If write input contains or has been tracked as enriched, writes fail with `store-enriched-record`.
+
+Use `mode: "raw"` when the host needs stored data for a write path:
+
+```ts
+const raw = await store.entity.read.by("documents", {
+  id: "doc_1",
+}, context, {
+  mode: "raw",
+});
+```
 
 There is no option to disable this guard, no auto-repair path, and no exported helper that strips, bypasses, repairs, or ignores the marker.
 
@@ -287,7 +366,13 @@ The cache provides:
 
 Cache keys ignore request/frontend/runtime-only context fields and include only data that changes read results.
 
-Writes and removes clear request loaders and invalidate the affected entity cache.
+Cache keys include entity, operation, mode, scoped context, where/input, scope, private-field unlocks, and entity version.
+
+Writes and removes clear request loaders and invalidate the affected entity cache. Hosts can also invalidate generic entity cache directly:
+
+```ts
+store.cache.invalidateEntity("documents");
+```
 
 ## Request Context
 
@@ -295,12 +380,17 @@ Request helpers use `AsyncLocalStorage` and are framework-neutral:
 
 ```ts
 import {
+  getStoreRequestContext,
   getOrCreateRequestLoader,
   runWithStoreRequestContext,
 } from "@trebired/store";
 
-await runWithStoreRequestContext(async () => {
+await runWithStoreRequestContext({
+  requestId: "req_1",
+}, async () => {
   const loader = getOrCreateRequestLoader("documents:all", () => new Map());
+  const request = getStoreRequestContext();
+  console.log(request?.meta.requestId);
   return loader;
 });
 ```
@@ -308,6 +398,7 @@ await runWithStoreRequestContext(async () => {
 Exports:
 
 - `runWithStoreRequestContext`
+- `getStoreRequestContext`
 - `getOrCreateRequestLoader`
 - `getOrCreateRequestValue`
 - `clearRequestEntityLoaders`

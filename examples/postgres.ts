@@ -39,11 +39,16 @@ await store.entity.write.put("documents", {
   workspaceId: "workspace_1",
 }, {
   id: "doc_1",
+  status: "active",
   title: "PostgreSQL JSONB store",
 });
 
 const all = await store.entity.read.all("documents", {
   workspaceId: "workspace_1",
+}, {
+  where: {
+    status: "active",
+  },
 });
 
 console.log(all.data);

@@ -58,6 +58,7 @@ export interface EntityMetadata {
 export interface EntityModeDefinition<TRecord extends StoreRecord = StoreRecord> {
   name?: string;
   enrich?: string;
+  hooks?: EntityModeHookMap;
   privateFields?: string[];
   metadata?: EntityMetadata;
   select?(record: TRecord): StoreRecord;
@@ -82,6 +83,7 @@ export interface ResolvedEntity<TRecord extends StoreRecord = StoreRecord> {
 
 export interface StoreReadOptions {
   mode?: StoreMode;
+  where?: StoreWhere;
   includePrivate?: StorePrivateUnlocks;
   scope?: "context" | "all";
   cache?: boolean;
@@ -107,6 +109,7 @@ export interface StoreReadMeta {
 export interface StorageReadOptions {
   scope?: "context" | "all";
   bypassCache?: boolean;
+  where?: StoreWhere;
 }
 
 export interface StorageAdapter<TRecord extends StoreRecord = StoreRecord> {
@@ -128,6 +131,38 @@ export interface ModeEnricherContext {
 
 export type ModeEnricher = (record: StoreRecord, context: ModeEnricherContext) => MaybePromise<StoreRecord>;
 export type ModeEnricherRegistry = Record<string, ModeEnricher>;
+export type EntityModeHookMap = Record<string, boolean> | readonly string[];
+
+export interface ModeEnricherHookContext extends ModeEnricherContext {
+  hook: string;
+}
+
+export interface ModeEnricherHookApi {
+  recorded_at: string;
+  readAll(entity: string, context: StoreContext, options?: StoreReadOptions): Promise<StoreResult<StoreRecord[]>>;
+  readById(entity: string, id: string, context: StoreContext, options?: StoreReadOptions): Promise<StoreResult<StoreRecord | null>>;
+}
+
+export type ModeEnricherHook = (
+  record: StoreRecord,
+  api: ModeEnricherHookApi,
+  context: ModeEnricherHookContext,
+) => MaybePromise<StoreRecord>;
+
+export type ModeEnricherHookLoader = (input: {
+  entity: string;
+  hook: string;
+  mode: string;
+}) => MaybePromise<ModeEnricherHook | null | undefined>;
+
+export interface ModeEnricherRegistryBuilderOptions<TRegistry extends EntityRegistry = EntityRegistry> {
+  entities: TRegistry;
+  loadHook: ModeEnricherHookLoader;
+  getStore?: () => Store;
+  readAll?(entity: string, context: StoreContext, options?: StoreReadOptions): Promise<StoreResult<StoreRecord[]>>;
+  readById?(entity: string, id: string, context: StoreContext, options?: StoreReadOptions): Promise<StoreResult<StoreRecord | null>>;
+  now?(): string;
+}
 
 export interface L2CacheAdapter {
   get<T>(key: string): Promise<T | null>;
@@ -190,8 +225,14 @@ export interface Store {
     read: StoreEntityRead;
     write: StoreEntityWrite;
   };
+  cache: StoreCacheController;
   subEntity: StoreSubEntityRead;
   inspectCache(): StoreCacheState;
+}
+
+export interface StoreCacheController {
+  inspect(): StoreCacheState;
+  invalidateEntity(entity: string): void;
 }
 
 export interface StoreCacheState {
@@ -252,4 +293,12 @@ export interface PostgresStoreClient {
 export interface PostgresJsonbAdapterOptions {
   client: PostgresStoreClient;
   schema?: string;
+}
+
+export type StoreRequestContextMeta = Record<string, unknown>;
+
+export interface StoreRequestContext {
+  entityLoaders: Map<string, unknown>;
+  meta: StoreRequestContextMeta;
+  values: Map<string, unknown>;
 }

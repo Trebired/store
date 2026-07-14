@@ -14,6 +14,9 @@
       "@trebired/store": [
         "./src/index.ts"
       ],
+      "#1e65qk7we0f3": [
+        "./src/enricher/builder.ts"
+      ],
       "#3g4yh2ypwm1t": [
         "./test/specs/subentity.spec.ts"
       ],

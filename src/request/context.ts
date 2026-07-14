@@ -1,17 +1,30 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-type RequestStore = {
-  entityLoaders: Map<string, unknown>;
-  values: Map<string, unknown>;
-};
+import type { StoreRequestContext, StoreRequestContextMeta } from "#y31thwq3bdf0";
 
-const requestStorage = new AsyncLocalStorage<RequestStore>();
+const requestStorage = new AsyncLocalStorage<StoreRequestContext>();
 
-function runWithStoreRequestContext<T>(run: () => T): T {
+function runWithStoreRequestContext<T>(run: () => T): T;
+function runWithStoreRequestContext<T>(meta: StoreRequestContextMeta, run: () => T): T;
+function runWithStoreRequestContext<T>(
+  metaOrRun: StoreRequestContextMeta | (() => T),
+  maybeRun?: () => T,
+): T {
+  const meta = typeof metaOrRun === "function" ? {} : metaOrRun;
+  const run = typeof metaOrRun === "function" ? metaOrRun : maybeRun;
+  if (!run) {
+    throw new Error("Store request context handler is required.");
+  }
+
   return requestStorage.run({
     entityLoaders: new Map(),
+    meta,
     values: new Map(),
   }, run);
+}
+
+function getStoreRequestContext(): StoreRequestContext | null {
+  return requestStorage.getStore() ?? null;
 }
 
 function getOrCreateRequestLoader<T>(key: string, create: () => T): T {
@@ -50,7 +63,7 @@ function clearRequestEntityLoaders(entity?: string): void {
   }
 }
 
-function ensureRequestStore(): RequestStore {
+function ensureRequestStore(): StoreRequestContext {
   const store = requestStorage.getStore();
   if (!store) {
     throw new Error("No store request context is active.");
@@ -63,5 +76,6 @@ export {
   clearRequestEntityLoaders,
   getOrCreateRequestLoader,
   getOrCreateRequestValue,
+  getStoreRequestContext,
   runWithStoreRequestContext,
 };

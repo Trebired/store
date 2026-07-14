@@ -1,4 +1,5 @@
 export { createStore } from "./core/store.js";
+export { createModeEnricherRegistry } from "./enricher/builder.js";
 export {
   defineEntityRegistry,
   resolveEntityDefinition,
@@ -10,6 +11,7 @@ export {
   clearRequestEntityLoaders,
   getOrCreateRequestLoader,
   getOrCreateRequestValue,
+  getStoreRequestContext,
   runWithStoreRequestContext,
 } from "./request/context.js";
 export { createMemoryStorageAdapter } from "./storage/memory.js";
@@ -31,7 +33,12 @@ export type {
   MaybePromise,
   ModeEnricher,
   ModeEnricherContext,
+  ModeEnricherHook,
+  ModeEnricherHookApi,
+  ModeEnricherHookContext,
+  ModeEnricherHookLoader,
   ModeEnricherRegistry,
+  ModeEnricherRegistryBuilderOptions,
   PostgresJsonbAdapterOptions,
   PostgresStoreClient,
   ResolvedEntity,
@@ -40,6 +47,7 @@ export type {
   Store,
   StoreCacheInspection,
   StoreCacheOptions,
+  StoreCacheController,
   StoreCacheState,
   StoreContext,
   StoreEntityRead,
@@ -57,6 +65,8 @@ export type {
   StoreReadOptions,
   StoreRecord,
   StoreResult,
+  StoreRequestContext,
+  StoreRequestContextMeta,
   StoreSubEntityRead,
   StoreWhere,
   StoreWriteOptions,

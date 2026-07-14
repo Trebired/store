@@ -38,6 +38,7 @@ function assertWritableRecord(entity: string, record: StoreRecord): StoreResult<
     enrichedRecords.has(record)
     || Object.prototype.hasOwnProperty.call(record, STORE_ENRICHED_MARKER)
     || Object.prototype.hasOwnProperty.call(record, enrichedBrand)
+    || Object.isFrozen(record)
   ) {
     return fail("store-enriched-record", "Enriched records cannot be written back as stored records.", {
       entity,

@@ -23,9 +23,7 @@ function createPostgresJsonbStorageAdapter(options: PostgresJsonbAdapterOptions)
       const rows = await queryMany(options, schema, entity, where, context, readOptions, 1);
       return rows[0] ?? null;
     },
-    byIds: (entity, ids, context, readOptions) => queryMany(options, schema, entity, {
-      id: ids,
-    }, context, readOptions),
+    byIds: (entity, ids, context, readOptions) => queryMany(options, schema, entity, { id: ids }, context, readOptions),
     count: async (entity, context, readOptions) => {
       const sql = buildSelectSql(schema, entity, {}, context, readOptions, "count(*)::int as count");
       const result = await options.client.query<{ count: number }>(sql.text, sql.params);
@@ -122,6 +120,10 @@ function buildWhere(
   const params: unknown[] = [];
   const scoped = options?.scope !== "all";
 
+  for (const [field, value] of Object.entries(options?.where || {})) {
+    pushJsonFilter(parts, params, field, value);
+  }
+
   for (const [field, value] of Object.entries(where)) {
     pushJsonFilter(parts, params, field, value);
   }
@@ -150,8 +152,18 @@ function pushJsonFilter(parts: string[], params: unknown[], field: string, value
     return;
   }
 
-  params.push(String(value));
-  parts.push(`record->>'${field}' = $${params.length}`);
+  if (isPlainObject(value)) {
+    params.push(JSON.stringify({
+      [field]: value,
+    }));
+    parts.push(`record @> $${params.length}::jsonb`);
+    return;
+  }
+
+  params.push(JSON.stringify({
+    [field]: value,
+  }));
+  parts.push(`record @> $${params.length}::jsonb`);
 }
 
 function qualifiedTable(schema: string, entity: ResolvedEntity): string {
@@ -187,6 +199,10 @@ function assertPlaceholders(sql: string, params: unknown[]): void {
   if (error) {
     throw new Error(error.message);
   }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 export {

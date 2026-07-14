@@ -75,6 +75,10 @@ function validateWhere(entity: string, where: StoreWhere): StoreResult<true> | n
   return null;
 }
 
+function validateOptionalWhere(entity: string, where: StoreWhere | undefined): StoreResult<true> | null {
+  return where === undefined ? null : validateWhere(entity, where);
+}
+
 function applyRequiredContext(record: StoreRecord, definition: EntityDefinition, context: StoreContext): StoreRecord {
   const out = {
     ...record,
@@ -91,6 +95,7 @@ export {
   applyRequiredContext,
   validateContext,
   validateId,
+  validateOptionalWhere,
   validateRecord,
   validateWhere,
 };

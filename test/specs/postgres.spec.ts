@@ -36,9 +36,131 @@ test("validates PostgreSQL identifiers, placeholders, and JSONB query shape", as
   });
 
   expect(client.queries[0]?.sql).toContain("\"public\".\"libraries\"");
-  expect(client.queries[0]?.sql).toContain("record->>'id' = $1");
-  expect(client.queries[0]?.sql).toContain("record->>'tenantId' = $2");
-  expect(client.queries[0]?.params).toEqual(["lib_1", "tenant_a"]);
+  expect(client.queries[0]?.sql).toContain("record @> $1::jsonb");
+  expect(client.queries[0]?.sql).toContain("record @> $2::jsonb");
+  expect(client.queries[0]?.params).toEqual([
+    JSON.stringify({
+      id: "lib_1",
+    }),
+    JSON.stringify({
+      tenantId: "tenant_a",
+    }),
+  ]);
+});
+
+test("combines scoped context and where filters in PostgreSQL reads", async () => {
+  const client = new CaptureClient();
+  const adapter = createPostgresJsonbStorageAdapter({
+    client,
+  });
+
+  await adapter.all({
+    definition: entities.libraries,
+    name: "libraries",
+  }, {
+    tenantId: "tenant_a",
+  }, {
+    where: {
+      meta: {
+        tier: "gold",
+      },
+      status: "active",
+    },
+  });
+
+  expect(client.queries[0]?.sql).toContain("record @> $1::jsonb");
+  expect(client.queries[0]?.sql).toContain("record @> $2::jsonb");
+  expect(client.queries[0]?.sql).toContain("record @> $3::jsonb");
+  expect(client.queries[0]?.params).toEqual([
+    JSON.stringify({
+      meta: {
+        tier: "gold",
+      },
+    }),
+    JSON.stringify({
+      status: "active",
+    }),
+    JSON.stringify({
+      tenantId: "tenant_a",
+    }),
+  ]);
+});
+
+test("supports all-scope PostgreSQL reads with where filters", async () => {
+  const client = new CaptureClient();
+  const adapter = createPostgresJsonbStorageAdapter({
+    client,
+  });
+
+  await adapter.all({
+    definition: entities.libraries,
+    name: "libraries",
+  }, {}, {
+    scope: "all",
+    where: {
+      status: "active",
+    },
+  });
+
+  expect(client.queries[0]?.sql).toContain("record @> $1::jsonb");
+  expect(client.queries[0]?.sql).not.toContain("tenantId");
+  expect(client.queries[0]?.params).toEqual([
+    JSON.stringify({
+      status: "active",
+    }),
+  ]);
+});
+
+test("applies where filters to PostgreSQL count, hasAny, and byIds", async () => {
+  const client = new CaptureClient();
+  const adapter = createPostgresJsonbStorageAdapter({
+    client,
+  });
+  const entity = {
+    definition: entities.libraries,
+    name: "libraries",
+  };
+
+  await adapter.count(entity, {
+    tenantId: "tenant_a",
+  }, {
+    where: {
+      status: "active",
+    },
+  });
+  await adapter.hasAny(entity, {
+    tenantId: "tenant_a",
+  }, {
+    where: {
+      status: "active",
+    },
+  });
+  await adapter.byIds(entity, ["lib_1", "lib_2"], {
+    tenantId: "tenant_a",
+  }, {
+    where: {
+      status: "active",
+    },
+  });
+
+  expect(client.queries[0]?.sql).toContain("count(*)::int as count");
+  expect(client.queries[0]?.params[0]).toBe(JSON.stringify({
+    status: "active",
+  }));
+  expect(client.queries[1]?.sql).toContain("limit 1");
+  expect(client.queries[2]?.sql).toContain("record->>'id' = any($2::text[])");
+  expect(client.queries[2]?.params).toEqual([
+    JSON.stringify({
+      status: "active",
+    }),
+    [
+      "lib_1",
+      "lib_2",
+    ],
+    JSON.stringify({
+      tenantId: "tenant_a",
+    }),
+  ]);
 });
 
 class CaptureClient implements PostgresStoreClient {
@@ -53,7 +175,11 @@ class CaptureClient implements PostgresStoreClient {
       sql,
     });
     return {
-      rows: [],
+      rows: sql.includes("count(*)") ? [
+        {
+          count: 0,
+        } as T,
+      ] : [],
     };
   }
 }

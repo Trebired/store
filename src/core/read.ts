@@ -6,7 +6,7 @@ import type {
   StoreResult,
   StoreWhere,
 } from "#y31thwq3bdf0";
-import { validateContext, validateWhere } from "./validation.js";
+import { validateContext, validateOptionalWhere, validateWhere } from "./validation.js";
 import type { StoreRuntime } from "./runtime.js";
 
 function createEntityRead(runtime: StoreRuntime): StoreEntityRead {
@@ -35,11 +35,12 @@ async function readAll<TRecord extends StoreRecord>(
   }
 
   const contextError = validateContext(resolved.value.name, resolved.value.definition, context, readOptions.scope);
-  if (contextError) {
-    return contextError as StoreResult<TRecord[]>;
+  const whereError = validateOptionalWhere(resolved.value.name, readOptions.where);
+  if (contextError || whereError) {
+    return (contextError || whereError) as StoreResult<TRecord[]>;
   }
 
-  return runtime.cachedRead(resolved.value, "all", {}, context, readOptions, async () => {
+  return runtime.cachedRead(resolved.value, "all", readOptions.where ?? {}, context, readOptions, async () => {
     const rows = await storage.value.all(resolved.value, context, runtime.toStorageOptions(readOptions));
     return runtime.mapRows<TRecord>(resolved.value, rows, context, readOptions);
   });
@@ -58,6 +59,7 @@ async function readBy<TRecord extends StoreRecord>(
   }
 
   const invalid = validateWhere(resolved.value.name, where)
+    || validateOptionalWhere(resolved.value.name, readOptions.where)
     || validateContext(resolved.value.name, resolved.value.definition, context, readOptions.scope);
   if (invalid) {
     return invalid as StoreResult<TRecord | null>;
@@ -91,11 +93,12 @@ async function count(
   }
 
   const contextError = validateContext(resolved.value.name, resolved.value.definition, context, readOptions.scope);
-  if (contextError) {
-    return contextError as StoreResult<number>;
+  const whereError = validateOptionalWhere(resolved.value.name, readOptions.where);
+  if (contextError || whereError) {
+    return (contextError || whereError) as StoreResult<number>;
   }
 
-  return runtime.cachedRead(resolved.value, "count", {}, context, readOptions, () => {
+  return runtime.cachedRead(resolved.value, "count", readOptions.where ?? {}, context, readOptions, () => {
     return storage.value.count(resolved.value, context, runtime.toStorageOptions(readOptions));
   });
 }
@@ -117,11 +120,12 @@ async function hasAny(
   }
 
   const contextError = validateContext(resolved.value.name, resolved.value.definition, context, readOptions.scope);
-  if (contextError) {
-    return contextError as StoreResult<boolean>;
+  const whereError = validateOptionalWhere(resolved.value.name, readOptions.where);
+  if (contextError || whereError) {
+    return (contextError || whereError) as StoreResult<boolean>;
   }
 
-  return runtime.cachedRead(resolved.value, "hasAny", {}, context, readOptions, () => {
+  return runtime.cachedRead(resolved.value, "hasAny", readOptions.where ?? {}, context, readOptions, () => {
     return storage.value.hasAny(resolved.value, context, runtime.toStorageOptions(readOptions));
   });
 }

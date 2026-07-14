@@ -62,6 +62,20 @@ test("fails writes for input records with the visible enriched marker", async ()
   expect(write.error_code).toBe("store-enriched-record");
 });
 
+test("fails writes for frozen records even without the visible marker", async () => {
+  const store = createFixtureStore();
+  const frozen = Object.freeze({
+    id: "lib_1",
+    name: "Frozen",
+  });
+  const write = await store.entity.write.put("libraries", {
+    tenantId: "tenant_a",
+  }, frozen);
+
+  expect(write.ok).toBe(false);
+  expect(write.error_code).toBe("store-enriched-record");
+});
+
 test("deep-freezes enriched records and rejects same-object marker deletion attempts", async () => {
   const store = createFixtureStore([
     {
