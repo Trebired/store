@@ -1,7 +1,10 @@
-export default {
-  sourceRoot: ".",
-  sourceExtensions: [".ts", ".tsx", ".js", ".jsx"],
-  excludeDirs: ["node_modules", "dist", "tmp", ".tmp", "test", "examples"],
+import { defineCodeDisciplineConfig } from "@trebired/code-discipline";
+
+export default defineCodeDisciplineConfig({
+  sourceRoot: "src",
+  excludeDirs: {
+    gitignore: true,
+  },
   logging: {
     enabled: true,
     quiet: false,
@@ -11,6 +14,14 @@ export default {
     restoreAfterRun: false,
   },
   rules: {
+    bannedPatterns: {
+      patterns: [
+        {
+          value: "operlorn",
+          allowedFiles: ["package.json"],
+        },
+      ],
+    },
     maxFileLines: {
       max: 350,
     },
@@ -18,6 +29,9 @@ export default {
       max: 50,
     },
     folderizeCompoundFiles: {},
+    removeComments: {
+      exclude: ["@ts-nocheck"],
+    },
     syncImports: {
       alias: {
         strategy: "random",
@@ -29,4 +43,4 @@ export default {
       },
     },
   },
-};
+});
