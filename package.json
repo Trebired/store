@@ -1,0 +1,96 @@
+{
+  "bugs": {
+    "url": "https://github.com/Trebired/store/issues"
+  },
+  "dependencies": {
+    "@trebired/result": "^0.2.0"
+  },
+  "description": "Reusable generic entity store for Bun and Node.js with typed entity registries, scoped JSONB storage, modes, request loaders, cache invalidation, and sub-entity reads.",
+  "devDependencies": {
+    "@trebired/code-discipline": "^3.2.1",
+    "@types/bun": "1.3.4",
+    "@types/node": "24.10.1",
+    "@types/pg": "^8.20.0",
+    "pg": "^8.22.0",
+    "typescript": "6.0.2"
+  },
+  "engines": {
+    "bun": ">=1.0.0",
+    "node": ">=18"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "homepage": "https://github.com/Trebired/store#readme",
+  "imports": {
+    "#11ugze89y924": "./.tmp/verify-pack/consumer/index.ts",
+    "#3g4yh2ypwm1t": "./test/specs/subentity.spec.ts",
+    "#3rm4j57116nj": "./scripts/prepare-dist.mjs",
+    "#44o0z05ifdgn": "./src/core/result.ts",
+    "#613yyghfyv0a": "./src/core/enriched.ts",
+    "#8pewakkhamie": "./src/entity/registry.ts",
+    "#a8a6v712yhzg": "./examples/basic.ts",
+    "#b4e4gjc7njzb": "./src/core/read.ts",
+    "#b9rnmvf9p9z3": "./src/storage/postgres/jsonb.ts",
+    "#bo18xc6n4smu": "./src/subentity/read.ts",
+    "#d3q3qxptfbbt": "./scripts/verify-pack.mjs",
+    "#g06v32kod8xy": "./src/core/store.ts",
+    "#g8u7bg42czn8": "./src/request/context.ts",
+    "#gpaizcbh8900": "./src/core/runtime.ts",
+    "#index": "./src/index.ts",
+    "#l51pnb6j0sxx": "./src/core/write.ts",
+    "#mq84z0z7glm9": "./src/storage/memory.ts",
+    "#nlliejgv8p5m": "./tb.code-discipline.ts",
+    "#oz5habwl5021": "./src/cache/cache.ts",
+    "#r05cko7a02f8": "./src/core/private.ts",
+    "#rc6d5lmoaws9": "./examples/postgres.ts",
+    "#rzbzgbo1ebc2": "./test/specs/postgres.spec.ts",
+    "#tfz0p9tqi4ox": "./test/specs/store.spec.ts",
+    "#w3sf7ae6e20y": "./test/specs/enriched.spec.ts",
+    "#xwy7fgl52hsw": "./src/core/validation.ts",
+    "#y31thwq3bdf0": "./src/types.ts",
+    "#zeealawo10hg": "./src/storage/postgres/validation.ts"
+  },
+  "keywords": [
+    "store",
+    "entity-store",
+    "jsonb",
+    "postgres",
+    "cache",
+    "node",
+    "bun"
+  ],
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "name": "@trebired/store",
+  "packageManager": "bun@1.3.12",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Trebired/store"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && node ./scripts/prepare-dist.mjs prepare-dist",
+    "postpack": "node ./scripts/prepare-dist.mjs postpack",
+    "prepack": "bun run build && node ./scripts/prepare-dist.mjs prepack",
+    "prepublishOnly": "bun run typecheck && bun test && bun run verify:pack",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "verify:pack": "node ./scripts/verify-pack.mjs"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "0.1.0"
+}
