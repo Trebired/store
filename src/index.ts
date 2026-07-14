@@ -58,6 +58,7 @@ export {
 } from "./request/context.js";
 export { createMemoryStorageAdapter } from "./storage/memory.js";
 export { createPostgresJsonbStorageAdapter } from "./storage/postgres/jsonb.js";
+export { createSqliteJsonStorageAdapter } from "./storage/sqlite/json.js";
 export { STORE_LOG_GROUP } from "./logging.js";
 export {
   quoteIdentifier,
@@ -194,6 +195,24 @@ export type {
   StoreRuntimePostgresPoolOptions,
   StoreRuntimeWriteEvent,
 } from "./runtime/types.js";
+
+export type {
+  SqliteDatabase,
+  SqliteJsonAdapterOptions,
+  SqliteRunResult,
+  SqliteStatement,
+} from "./storage/sqlite/types.js";
+
+export type {
+  RuntimeSqliteIndex,
+  RuntimeSqliteMigration,
+  RuntimeSqliteMigrationApi,
+  RuntimeSqliteMetricsEvent,
+  RuntimeSqliteQueryOptions,
+  RuntimeSqliteQueryResult,
+  StoreRuntimeSqlite,
+  StoreRuntimeSqliteOptions,
+} from "./runtime/sqlite/types.js";
 
 export type {
   BootFollowUpDispatcherOptions,

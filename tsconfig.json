@@ -14,6 +14,9 @@
       "@trebired/store": [
         "./src/index.ts"
       ],
+      "#03c0aipgeoge": [
+        "./src/storage/sqlite/json.ts"
+      ],
       "#1e65qk7we0f3": [
         "./src/enricher/builder.ts"
       ],
@@ -22,6 +25,9 @@
       ],
       "#3g4yh2ypwm1t": [
         "./test/specs/subentity.spec.ts"
+      ],
+      "#3k3domto9hh7": [
+        "./src/runtime/sqlite/types.ts"
       ],
       "#3rm4j57116nj": [
         "./scripts/prepare-dist.mjs"
@@ -61,6 +67,9 @@
       ],
       "#b9rnmvf9p9z3": [
         "./src/storage/postgres/jsonb.ts"
+      ],
+      "#bhaakxl2qkxy": [
+        "./src/runtime/sqlite.ts"
       ],
       "#bo18xc6n4smu": [
         "./src/subentity/read.ts"
@@ -106,6 +115,9 @@
       ],
       "#qcbwdtdi8gun": [
         "./src/runtime/postgres-safety.ts"
+      ],
+      "#qmu6u0jug6cv": [
+        "./src/storage/sqlite/types.ts"
       ],
       "#r05cko7a02f8": [
         "./src/core/private.ts"

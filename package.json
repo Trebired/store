@@ -7,7 +7,7 @@
     "@trebired/result": "^0.2.0",
     "pg": "^8.22.0"
   },
-  "description": "Reusable generic entity store for Bun and Node.js with typed entity registries, scoped JSONB storage, modes, request loaders, cache invalidation, and sub-entity reads.",
+  "description": "Reusable generic entity store for Bun and Node.js with typed entity registries, SQLite, scoped JSONB storage, modes, request loaders, cache invalidation, and sub-entity reads.",
   "devDependencies": {
     "@trebired/code-discipline": "^3.2.1",
     "@types/bun": "1.3.4",
@@ -33,10 +33,12 @@
   ],
   "homepage": "https://github.com/Trebired/store#readme",
   "imports": {
+    "#03c0aipgeoge": "./src/storage/sqlite/json.ts",
     "#11ugze89y924": "./.tmp/verify-pack/consumer/index.ts",
     "#1e65qk7we0f3": "./src/enricher/builder.ts",
     "#1u8d84lj7wzq": "./src/runtime/store-runtime.ts",
     "#3g4yh2ypwm1t": "./test/specs/subentity.spec.ts",
+    "#3k3domto9hh7": "./src/runtime/sqlite/types.ts",
     "#3rm4j57116nj": "./scripts/prepare-dist.mjs",
     "#3ug859kbex8c": "./src/logging.ts",
     "#44o0z05ifdgn": "./src/core/result.ts",
@@ -50,6 +52,7 @@
     "#aayjwnodxnar": "./src/runtime/boot/followups.ts",
     "#b4e4gjc7njzb": "./src/core/read.ts",
     "#b9rnmvf9p9z3": "./src/storage/postgres/jsonb.ts",
+    "#bhaakxl2qkxy": "./src/runtime/sqlite.ts",
     "#bo18xc6n4smu": "./src/subentity/read.ts",
     "#by12tg0dnbxs": "./src/runtime/boot/helpers.ts",
     "#d3q3qxptfbbt": "./scripts/verify-pack.mjs",
@@ -66,6 +69,7 @@
     "#pq1c0xwc48qu": "./src/runtime/types.ts",
     "#pxavar91qrj2": "./src/runtime/boot/rewriter.ts",
     "#qcbwdtdi8gun": "./src/runtime/postgres-safety.ts",
+    "#qmu6u0jug6cv": "./src/storage/sqlite/types.ts",
     "#r05cko7a02f8": "./src/core/private.ts",
     "#rc6d5lmoaws9": "./examples/postgres.ts",
     "#rzbzgbo1ebc2": "./test/specs/postgres.spec.ts",
@@ -81,6 +85,7 @@
     "store",
     "entity-store",
     "jsonb",
+    "sqlite",
     "postgres",
     "cache",
     "node",
@@ -109,5 +114,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.7.0"
+  "version": "1.0.0"
 }

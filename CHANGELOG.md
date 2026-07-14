@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0
+
+- Added first-class SQLite support through `createSqliteJsonStorageAdapter(...)`, with JSON string records, scoped context filtering, `where` and `options.where`, `byIds`, `limit`, `sort`, `count`, `hasAny`, native `removeMany`, and strict identifier/path validation.
+- Added `createStoreRuntime({ sqlite, entities, ... })` with runtime-owned SQLite query/init support, table creation, expression indexes, migrations, optional metrics/logging, and structured envelope query failures.
+- Updated runtime entity storage defaults so explicit storage always wins, SQLite-only runtimes default to `sqlite`, and mixed Postgres/SQLite runtimes remain deterministic with explicit per-entity storage available.
+- Exported SQLite adapter, database/client, runtime facade, query, migration, index, and metrics types from the package root.
+- Added SQLite examples, README coverage, and tests for direct adapter usage, runtime initialization, migrations, mixed storage, query validation, malformed JSON reads, and bulk operations.
+
 ## 0.7.0
 
 - Added `createBootFollowUpDispatcher(...)` with generic call lookup, structured skipped/success/failure outcomes, exception handling, optional boolean policy checks, readiness guard polling, timeout skips, and package-owned follow-up log metadata.

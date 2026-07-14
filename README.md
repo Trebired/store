@@ -1,6 +1,6 @@
 # @trebired/store
 
-Reusable generic entity store for Bun and Node.js applications, with typed entity registries, scoped JSONB storage, mode enrichment, request-scoped loaders, cache invalidation, and host-defined sub-entity reads.
+Reusable generic entity store for Bun and Node.js applications, with typed entity registries, SQLite and scoped JSONB storage, mode enrichment, request-scoped loaders, cache invalidation, and host-defined sub-entity reads.
 
 `@trebired/store` is the generic Trebired package for hosts that already know their entities but should not keep rebuilding the same persistence, context scoping, read modes, cache, and enriched-record safety layer.
 
@@ -9,9 +9,11 @@ It owns:
 - entity registry resolution
 - high-level store runtime bootstrap
 - PostgreSQL pool, query, and schema/table initialization
+- SQLite query and table/index initialization
 - scoped entity reads and writes
 - storage adapter contracts
 - PostgreSQL JSONB storage
+- SQLite JSON storage
 - raw, full, and named mode output
 - private field redaction
 - enriched-record write protection
@@ -41,6 +43,8 @@ For the PostgreSQL adapter:
 ```sh
 npm install pg
 ```
+
+SQLite does not add a native runtime dependency. Pass a compatible SQLite database/client, such as Bun SQLite, to the adapter or runtime.
 
 ## Quick Start
 
@@ -324,7 +328,44 @@ Runtime Postgres:
 - creates the schema, JSONB entity tables, default GIN indexes, extra expression indexes, and safe migration hooks
 - wires the package PostgreSQL JSONB adapter internally
 
+Runtime SQLite:
+
+- uses an injected generic SQLite database/client, or an optional dynamic Bun SQLite `path`
+- stores one table per entity with `id text primary key` and `record text not null`
+- stores records as JSON strings and filters/sorts with SQLite JSON functions where possible
+- validates table names, JSON path fields, sort fields, and generated SQL
+- supports `where`, `options.where`, `byIds`, scoped context, `scope: "all"`, `limit`, `sort`, and native bulk removal
+- supports `resultMode: "envelope"` for structured query validation failures
+- logs slow queries and optional operation logs through `@trebired/logger-adapter`
+- calls an optional query metrics callback
+- creates SQLite-backed entity tables, expression indexes, and safe migration hooks during `runtime.onBoot()`
+- wires the package SQLite JSON adapter internally
+
+```ts
+import { Database } from "bun:sqlite";
+import { createStoreRuntime } from "@trebired/store";
+
+const database = new Database("store.sqlite");
+
+const runtime = createStoreRuntime({
+  sqlite: {
+    database,
+  },
+  entities: {
+    users: {
+      table: "users",
+      storage: "sqlite",
+      context: ["tenant_id"],
+    },
+  },
+});
+
+await runtime.onBoot();
+```
+
 Runtime registry normalization supports concise host-owned entity definitions. `required` becomes `context`, `private` becomes `privateFields`, and mode hooks such as `"with-profile": true` load hook name `"profile"`. Unknown fields can be preserved as opaque metadata, but the package does not interpret display or presentation metadata.
+
+If an entity declares `storage`, that value is respected. If storage is omitted, runtime defaults to `postgres` when Postgres is configured, otherwise `sqlite` when SQLite is configured, otherwise `memory`. When Postgres and SQLite are both configured, declare `storage` on each entity that should not use the Postgres default.
 
 Runtime boot reconciliation supports generic `fixes` with `if`, `if_all`, nested field paths, `equals`, `equals_any`, `gt`, `set`, `set_if_missing`, `unset`, `rewrite`, `after`, `run_after_on_match`, `skip_in_developer_mode`, and `skip_in_split_dev`. Boot values can resolve from context with `{ ctx: "now_iso" }`. The package queues and runs host-owned follow-up callbacks, records structured outcomes in `RuntimeBootResult.followUps`, and leaves the callback behavior outside the package.
 
@@ -478,6 +519,50 @@ Stable memo keys ignore request/runtime-only fields such as `req`, `res`, `meta`
 Provider-backed virtual sub-entities can be declared under `subEntities` with `kind: "provider"` and are routed through `runtime.entity.read.all/by/count/hasAny(...)`.
 
 For lower-level integrations, `createStore(options)` remains available.
+
+Direct SQLite adapter usage:
+
+```ts
+import { Database } from "bun:sqlite";
+import {
+  createSqliteJsonStorageAdapter,
+  createStore,
+  defineEntityRegistry,
+} from "@trebired/store";
+
+const database = new Database(":memory:");
+
+const entities = defineEntityRegistry({
+  users: {
+    table: "users",
+    storage: "sqlite",
+    context: ["tenant_id"],
+  },
+});
+
+const sqlite = createSqliteJsonStorageAdapter({
+  database,
+});
+
+const store = createStore({
+  entities,
+  storages: {
+    sqlite,
+  },
+});
+
+await sqlite.ensureReadyFor?.({
+  definition: entities.users,
+  name: "users",
+});
+
+await store.entity.write.put("users", {
+  tenant_id: "tenant_1",
+}, {
+  email: "ada@example.test",
+  id: "user_1",
+});
+```
 
 Entity reads:
 

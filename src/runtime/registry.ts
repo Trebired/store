@@ -27,17 +27,22 @@ const MODE_KEYS = new Set([
   "with",
 ]);
 
-function normalizeRuntimeEntities(entities: RuntimeEntityRegistry, hasPostgres: boolean): EntityRegistry {
+interface RuntimeStorageDefaults {
+  hasPostgres: boolean;
+  hasSqlite: boolean;
+}
+
+function normalizeRuntimeEntities(entities: RuntimeEntityRegistry, defaults: RuntimeStorageDefaults): EntityRegistry {
   return Object.fromEntries(Object.entries(entities).map(([name, definition]) => [
     name,
-    normalizeRuntimeEntity(name, definition, hasPostgres),
+    normalizeRuntimeEntity(name, definition, defaults),
   ]));
 }
 
 function normalizeRuntimeEntity(
   name: string,
   definition: RuntimeEntityDefinition,
-  hasPostgres: boolean,
+  defaults: RuntimeStorageDefaults,
 ): EntityDefinition {
   validateEntityDefinition(name, definition);
   return {
@@ -46,9 +51,15 @@ function normalizeRuntimeEntity(
     metadata: mergeMetadata(definition, definition.metadata),
     modes: normalizeRuntimeModes(name, definition.modes),
     privateFields: definition.privateFields || definition.private,
-    storage: definition.storage || (hasPostgres ? "postgres" : "memory"),
+    storage: definition.storage || defaultStorage(defaults),
     table: definition.table,
   };
+}
+
+function defaultStorage(defaults: RuntimeStorageDefaults): string {
+  if (defaults.hasPostgres) return "postgres";
+  if (defaults.hasSqlite) return "sqlite";
+  return "memory";
 }
 
 function normalizeRuntimeModes(

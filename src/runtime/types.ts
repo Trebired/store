@@ -14,6 +14,7 @@ import type {
   SubEntityRegistry,
   StoreWhere,
 } from "#y31thwq3bdf0";
+import type { StoreRuntimeSqlite, StoreRuntimeSqliteOptions } from "./sqlite/types.js";
 
 export type RuntimeEntityRegistry = Record<string, RuntimeEntityDefinition>;
 
@@ -82,6 +83,7 @@ export interface RuntimeHydrationApi {
 export interface StoreRuntimeCreateOptions<TRegistry extends RuntimeEntityRegistry = RuntimeEntityRegistry> {
   entities: TRegistry;
   postgres?: StoreRuntimePostgresOptions;
+  sqlite?: StoreRuntimeSqliteOptions;
   modes?: StoreRuntimeModeOptions;
   boot?: StoreRuntimeBootOptions;
   memo?: StoreRuntimeMemoOptions;
@@ -375,6 +377,7 @@ export interface RuntimePostgresQueryOptions {
 export interface StoreRuntimeFacade extends Pick<Store, "cache" | "entity" | "inspectCache" | "records" | "repair" | "subEntity"> {
   onBoot(): Promise<RuntimeBootResult>;
   postgres: StoreRuntimePostgres;
+  sqlite: StoreRuntimeSqlite;
   memo: StoreRuntimeMemo;
 }
 

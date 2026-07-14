@@ -4,6 +4,7 @@ import { createStore } from "#g06v32kod8xy";
 import { resolveLogger } from "#3ug859kbex8c";
 import { createMemoryStorageAdapter } from "#mq84z0z7glm9";
 import { createPostgresJsonbStorageAdapter } from "#b9rnmvf9p9z3";
+import { createSqliteJsonStorageAdapter } from "#03c0aipgeoge";
 import { resolveEntityName } from "#8pewakkhamie";
 import type {
   ModeEnricher,
@@ -16,6 +17,7 @@ import { createBootRunner } from "./boot.js";
 import { createHydrationEnrichers } from "./hydration.js";
 import { createRuntimeMemo } from "./memo.js";
 import { createRuntimePostgres } from "./postgres.js";
+import { createRuntimeSqlite } from "./sqlite.js";
 import {
   isProviderSubEntityRegistry,
   wrapProviderSubEntities,
@@ -30,9 +32,14 @@ import type {
 
 function createStoreRuntime(options: StoreRuntimeCreateOptions): StoreRuntimeFacade {
   const logger = resolveLogger(options.logger, options.loggerAdapter);
-  const entities = normalizeRuntimeEntities(options.entities, Boolean(options.postgres));
+  const entities = normalizeRuntimeEntities(options.entities, {
+    hasPostgres: Boolean(options.postgres),
+    hasSqlite: Boolean(options.sqlite),
+  });
   const postgresLogger = resolveLogger(options.postgres?.logger || options.logger, options.loggerAdapter);
   const postgresRuntime = createRuntimePostgres(options.postgres, entities, postgresLogger || logger);
+  const sqliteLogger = resolveLogger(options.sqlite?.logger || options.logger, options.loggerAdapter);
+  const sqliteRuntime = createRuntimeSqlite(options.sqlite, entities, sqliteLogger || logger);
   const memo = createRuntimeMemo(options.memo);
   let store: Store;
   const enrichers = createRuntimeEnrichers(options, () => store);
@@ -45,7 +52,7 @@ function createStoreRuntime(options: StoreRuntimeCreateOptions): StoreRuntimeFac
     enrichers,
     logger: options.logger,
     loggerAdapter: options.loggerAdapter,
-    storages: createRuntimeStorages(postgresRuntime),
+    storages: createRuntimeStorages(postgresRuntime, sqliteRuntime),
     subEntities: isProviderSubEntityRegistry(options.subEntities) ? undefined : options.subEntities,
   });
   const read = wrapProviderSubEntities(store.entity.read, isProviderSubEntityRegistry(options.subEntities) ? options.subEntities : undefined);
@@ -56,34 +63,52 @@ function createStoreRuntime(options: StoreRuntimeCreateOptions): StoreRuntimeFac
   const boot = createBootRunner({
     entity,
   }, options.boot);
+  const onBoot = createRuntimeBootInitializer(options, postgresRuntime, sqliteRuntime, boot);
 
   return {
     cache: store.cache,
     entity,
     inspectCache: () => store.inspectCache(),
     memo,
-    onBoot: async () => {
-      if (options.postgres) {
-        await postgresRuntime.postgres.init();
-      }
-      return boot();
-    },
+    onBoot,
     postgres: postgresRuntime.postgres,
     records: (name, views) => createRecordViews({
       entity,
     }, name, views),
     repair: store.repair,
+    sqlite: sqliteRuntime.sqlite,
     subEntity: store.subEntity,
   };
 }
 
-function createRuntimeStorages(postgresRuntime: ReturnType<typeof createRuntimePostgres>) {
+function createRuntimeBootInitializer(
+  options: StoreRuntimeCreateOptions,
+  postgresRuntime: ReturnType<typeof createRuntimePostgres>,
+  sqliteRuntime: ReturnType<typeof createRuntimeSqlite>,
+  boot: () => ReturnType<StoreRuntimeFacade["onBoot"]>,
+): StoreRuntimeFacade["onBoot"] {
+  return async () => {
+    if (options.postgres) await postgresRuntime.postgres.init();
+    if (options.sqlite) await sqliteRuntime.sqlite.init();
+    return boot();
+  };
+}
+
+function createRuntimeStorages(
+  postgresRuntime: ReturnType<typeof createRuntimePostgres>,
+  sqliteRuntime: ReturnType<typeof createRuntimeSqlite>,
+) {
   return {
     memory: createMemoryStorageAdapter(),
     postgres: createPostgresJsonbStorageAdapter({
       client: postgresRuntime.client,
       schema: postgresRuntime.schema,
     }),
+    ...(sqliteRuntime.client ? {
+      sqlite: createSqliteJsonStorageAdapter({
+        database: sqliteRuntime.client,
+      }),
+    } : {}),
   };
 }
 
@@ -93,7 +118,10 @@ function createRuntimeEnrichers(
 ): ModeEnricherRegistry {
   const hydration = createHydrationEnrichers(options.entities, getStore);
   const hooks = createModeEnricherRegistry({
-    entities: normalizeRuntimeEntities(options.entities, Boolean(options.postgres)),
+    entities: normalizeRuntimeEntities(options.entities, {
+      hasPostgres: Boolean(options.postgres),
+      hasSqlite: Boolean(options.sqlite),
+    }),
     getStore,
     loadHook: (input) => loadRuntimeHook(options.modes, input),
   });

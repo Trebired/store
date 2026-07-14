@@ -169,7 +169,7 @@ async function initPostgres(
 ): Promise<void> {
   await runInternal(client, "select 1", [], logger, "Postgres first connection succeeded.");
   await runInternal(client, `create schema if not exists ${quoteIdentifier(schema)}`, [], logger);
-  for (const definition of Object.values(entities)) {
+  for (const definition of Object.values(entities).filter((item) => item.storage === "postgres")) {
     await createEntityTable(client, schema, definition.table, logger);
   }
   for (const index of options.indexes || []) {
