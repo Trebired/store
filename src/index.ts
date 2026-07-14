@@ -6,6 +6,17 @@ export {
   countBy,
   relation,
 } from "./runtime/hydration.js";
+export {
+  bootFollowUpWhen,
+  bootResetStatus,
+  bootRewrite,
+  bootSet,
+  bootSetIfMissing,
+  bootTruthyCondition,
+  bootUnset,
+  defineBootFix,
+  mergeBootOptions,
+} from "./runtime/boot-helpers.js";
 export { createRedisMemoAdapter } from "./runtime/memo.js";
 export {
   defineEntityRegistry,

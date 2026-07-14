@@ -1,10 +1,17 @@
 import { expect, test } from "bun:test";
 
 import {
+  bootFollowUpWhen,
+  bootResetStatus,
+  bootRewrite,
+  bootSetIfMissing,
+  bootTruthyCondition,
   computed,
   countBy,
   createRedisMemoAdapter,
   createStoreRuntime,
+  defineBootFix,
+  mergeBootOptions,
   redactDatabaseUrl,
   relation,
   validateRuntimePostgresQuery,
@@ -290,6 +297,77 @@ test("runs boot fixes with matching, set, unset, set_if_missing, rewrites, follo
   expect(row.data).toMatchObject({
     normalized: true,
     seen: true,
+    status: "stopped",
+  });
+  expect((row.data?.runtime as { pid?: number }).pid).toBeUndefined();
+});
+
+test("builds boot fixes with reusable helper actions", async () => {
+  const followUps: string[] = [];
+  const runtime = createStoreRuntime({
+    boot: mergeBootOptions({
+      fixes: [
+        defineBootFix("jobs", [
+          bootRewrite(),
+          bootSetIfMissing({
+            owner: "system",
+          }),
+          bootResetStatus(["running", "starting"], "stopped", {
+            unset: [
+              "runtime.pid",
+            ],
+          }),
+          bootFollowUpWhen("jobs.start", [
+            {
+              equals: "stopped",
+              field: "status",
+            },
+            bootTruthyCondition("runtime.policy.auto_start"),
+          ]),
+        ]),
+      ],
+      followUps: {
+        "jobs.start": async ({ record }) => {
+          followUps.push(String(record.id));
+        },
+      },
+      rewrites: {
+        normalize: (record) => ({
+          ...record,
+          normalized_by_helper: true,
+        }),
+      },
+    }),
+    entities: {
+      jobs: {
+        table: "jobs",
+      },
+    },
+  });
+
+  await runtime.entity.write.put("jobs", {}, {
+    id: "job_1",
+    runtime: {
+      pid: 9,
+      policy: {
+        auto_start: "yes",
+      },
+    },
+    status: "running",
+  });
+
+  const result = await runtime.onBoot();
+  const row = await runtime.entity.read.by("jobs", {
+    id: "job_1",
+  }, {}, {
+    mode: "raw",
+  });
+
+  expect(result.changedCount).toBe(1);
+  expect(followUps).toEqual(["job_1"]);
+  expect(row.data).toMatchObject({
+    normalized_by_helper: true,
+    owner: "system",
     status: "stopped",
   });
   expect((row.data?.runtime as { pid?: number }).pid).toBeUndefined();

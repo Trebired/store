@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0
+
+- Added package-owned runtime boot helper builders for reusable boot fix declarations, status reset actions, default field actions, truthy policy conditions, follow-up queues, and boot option merging.
+- Kept host-owned follow-up execution and record normalization outside the package while reducing the repetitive boot configuration code hosts need to keep.
+
 ## 0.5.0
 
 - Added package-owned normalization for concise runtime entity registries, including `required`, `private`, concise mode hook maps, and automatic `"with-"` hook-name stripping.

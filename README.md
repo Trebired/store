@@ -328,6 +328,36 @@ Runtime registry normalization supports concise app-owned entity definitions. `r
 
 Runtime boot reconciliation supports generic `fixes` with `if`, `if_all`, nested field paths, `equals`, `equals_any`, `gt`, `set`, `set_if_missing`, `unset`, `rewrite`, `after`, `run_after_on_match`, `skip_in_developer_mode`, and `skip_in_split_dev`. Boot values can resolve from context with `{ ctx: "now_iso" }`. The package queues and runs app-owned follow-up callbacks, but does not know what those callbacks do.
 
+For host code that has many boot rules, the package exports reusable boot builders:
+
+```ts
+import {
+  bootFollowUpWhen,
+  bootResetStatus,
+  bootRewrite,
+  bootSetIfMissing,
+  bootTruthyCondition,
+  defineBootFix,
+  mergeBootOptions,
+} from "@trebired/store";
+
+const boot = mergeBootOptions({
+  fixes: [
+    defineBootFix("jobs", [
+      bootRewrite(),
+      bootSetIfMissing({ owner: "system" }),
+      bootResetStatus(["running", "starting"], "stopped", {
+        unset: ["runtime.pid"],
+      }),
+      bootFollowUpWhen("jobs.start", [
+        { field: "status", equals: "stopped" },
+        bootTruthyCondition("runtime.policy.auto_start"),
+      ]),
+    ]),
+  ],
+});
+```
+
 Runtime memo exposes:
 
 - `runtime.memo.get(...)`

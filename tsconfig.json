@@ -127,6 +127,9 @@
       ],
       "#zeealawo10hg": [
         "./src/storage/postgres/validation.ts"
+      ],
+      "#bootHelpers": [
+        "./src/runtime/boot-helpers.ts"
       ]
     },
     "strict": true,
