@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Added `@trebired/logger-adapter` support with package-owned `logger` and `loggerAdapter` options, public store logger types, and generic store lifecycle/read/write/cache events.
+
 ## 0.1.0
 
 - Initial public release of `@trebired/store`.

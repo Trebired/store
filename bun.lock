@@ -5,6 +5,7 @@
     "": {
       "name": "@trebired/store",
       "dependencies": {
+        "@trebired/logger-adapter": "^0.2.2",
         "@trebired/result": "^0.2.0",
       },
       "devDependencies": {

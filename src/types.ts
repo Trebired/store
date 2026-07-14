@@ -1,6 +1,20 @@
+import type {
+  LoggerAdapterEvent,
+  LoggerAdapterGenericLogMethod,
+  LoggerAdapterLogger,
+  LoggerAdapterLogMethod,
+  LoggerAdapterWriter,
+  NormalizedLoggerAdapter,
+} from "@trebired/logger-adapter";
 import type { ResultLike } from "@trebired/result";
 
 export type MaybePromise<T> = T | Promise<T>;
+export type StoreLogMethod = LoggerAdapterLogMethod;
+export type StoreLogEvent = LoggerAdapterEvent;
+export type StoreGenericLogMethod = LoggerAdapterGenericLogMethod;
+export type StoreLogger = LoggerAdapterLogger;
+export type StoreLoggerAdapter = LoggerAdapterWriter;
+export type NormalizedStoreLogger = NormalizedLoggerAdapter;
 export type StoreRecord = { id: string } & Record<string, unknown>;
 export type StoreContext = Record<string, unknown>;
 export type StoreWhere = Record<string, unknown>;
@@ -134,6 +148,8 @@ export interface CreateStoreOptions<TRegistry extends EntityRegistry = EntityReg
   enrichers?: ModeEnricherRegistry;
   cache?: boolean | StoreCacheOptions;
   subEntities?: SubEntityRegistry;
+  logger?: StoreLogger;
+  loggerAdapter?: StoreLoggerAdapter;
 }
 
 export interface StoreEntityRead {

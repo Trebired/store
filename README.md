@@ -17,6 +17,7 @@ It owns:
 - request-scoped loaders with `AsyncLocalStorage`
 - generic sub-entity execution
 - stable result/error envelopes
+- optional Trebired logger-adapter integration
 
 It stays intentionally generic.
 
@@ -107,6 +108,20 @@ const document = await store.entity.read.by("document", {
 ```
 
 All public operations return explicit Trebired-style result objects with `ok`, `error_code`, `message`, `data`, and optional `details`.
+
+## Logging
+
+Logging is optional and uses `@trebired/logger-adapter`, matching the other Trebired packages.
+
+```ts
+const store = createStore({
+  entities,
+  storages,
+  logger: console,
+});
+```
+
+Hosts can also pass `loggerAdapter` for a custom sink. The package emits generic store lifecycle/read/write/cache events only; it does not know about app routes, pages, permissions, or business objects.
 
 ## Core API
 

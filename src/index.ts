@@ -14,6 +14,7 @@ export {
 } from "./request/context.js";
 export { createMemoryStorageAdapter } from "./storage/memory.js";
 export { createPostgresJsonbStorageAdapter } from "./storage/postgres/jsonb.js";
+export { STORE_LOG_GROUP } from "./logging.js";
 export {
   quoteIdentifier,
   validatePlaceholderOrder,
@@ -45,6 +46,11 @@ export type {
   StoreEntityWrite,
   StoreErrorCode,
   StoreErrorDetails,
+  StoreGenericLogMethod,
+  StoreLogEvent,
+  StoreLogger,
+  StoreLoggerAdapter,
+  StoreLogMethod,
   StoreMode,
   StorePrivateUnlocks,
   StoreReadMeta,
@@ -57,4 +63,5 @@ export type {
   SubEntityContext,
   SubEntityDefinition,
   SubEntityRegistry,
+  NormalizedStoreLogger,
 } from "./types.js";

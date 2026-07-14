@@ -3,6 +3,7 @@
     "url": "https://github.com/Trebired/store/issues"
   },
   "dependencies": {
+    "@trebired/logger-adapter": "^0.2.2",
     "@trebired/result": "^0.2.0"
   },
   "description": "Reusable generic entity store for Bun and Node.js with typed entity registries, scoped JSONB storage, modes, request loaders, cache invalidation, and sub-entity reads.",
@@ -35,6 +36,7 @@
     "#11ugze89y924": "./.tmp/verify-pack/consumer/index.ts",
     "#3g4yh2ypwm1t": "./test/specs/subentity.spec.ts",
     "#3rm4j57116nj": "./scripts/prepare-dist.mjs",
+    "#3ug859kbex8c": "./src/logging.ts",
     "#44o0z05ifdgn": "./src/core/result.ts",
     "#613yyghfyv0a": "./src/core/enriched.ts",
     "#8pewakkhamie": "./src/entity/registry.ts",
@@ -92,5 +94,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }

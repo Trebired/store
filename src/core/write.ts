@@ -54,8 +54,18 @@ async function put<TRecord extends StoreRecord>(
     const stored = applyRequiredContext(record, resolved.value.definition, context) as TRecord;
     const out = await storage.value.put(resolved.value, context, stored, writeOptions);
     invalidate(runtime, resolved.value.name);
+    runtime.logger?.info("store.write", "Store record saved.", {
+      entity: resolved.value.name,
+      id: out.id,
+      operation: "put",
+    });
     return ok(out as TRecord, "Store record saved.");
   } catch (error) {
+    runtime.logger?.error("store.write", "Store record save failed.", {
+      entity: resolved.value.name,
+      error,
+      operation: "put",
+    });
     return storageFail(error, resolved.value.name, resolved.value.definition.storage);
   }
 }
@@ -111,8 +121,20 @@ async function remove(
   try {
     const removed = await storage.value.remove(resolved.value, context, id, writeOptions);
     invalidate(runtime, resolved.value.name);
+    runtime.logger?.info("store.write", "Store record remove completed.", {
+      entity: resolved.value.name,
+      id,
+      operation: "remove",
+      removed,
+    });
     return ok(removed, removed ? "Store record removed." : "Store record was already absent.");
   } catch (error) {
+    runtime.logger?.error("store.write", "Store record remove failed.", {
+      entity: resolved.value.name,
+      error,
+      id,
+      operation: "remove",
+    });
     return storageFail(error, resolved.value.name, resolved.value.definition.storage);
   }
 }
