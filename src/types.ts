@@ -52,8 +52,6 @@ export type StoreErrorDetails = {
 };
 
 export interface EntityMetadata {
-  icon?: string;
-  name?: string;
   [key: string]: unknown;
 }
 

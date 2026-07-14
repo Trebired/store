@@ -3,11 +3,17 @@ import { Pool } from "pg";
 import type { EntityRegistry, NormalizedStoreLogger, PostgresStoreClient } from "#y31thwq3bdf0";
 import type {
   RuntimePostgresClient,
+  RuntimePostgresQueryResult,
   RuntimePostgresQueryOptions,
   StoreRuntimePostgres,
   StoreRuntimePostgresOptions,
 } from "./types.js";
-import { quoteIdentifier, validatePlaceholderOrder, validateSqlIdentifier } from "#zeealawo10hg";
+import { quoteIdentifier, validateSqlIdentifier } from "#zeealawo10hg";
+import {
+  detectQueryCaller,
+  redactDatabaseUrl,
+  validateRuntimePostgresQuery,
+} from "./postgres-safety.js";
 
 const DEFAULT_SLOW_QUERY_MS = 250;
 
@@ -23,8 +29,12 @@ function createRuntimePostgres(
   const config = options || {};
   const schema = validateSchema(config.schema);
   const client = config.client || createPool(config, logger);
+  let initPromise: Promise<void> | null = null;
   const postgres = {
-    init: () => initPostgres(client, schema, entities, config, logger),
+    init: () => {
+      initPromise = initPromise || initPostgres(client, schema, entities, config, logger);
+      return initPromise;
+    },
     query: <T = Record<string, unknown>>(sql: string, params: readonly unknown[] = [], queryOptions?: RuntimePostgresQueryOptions) => {
       return runQuery<T>(client, sql, params, queryOptions, config, logger);
     },
@@ -73,14 +83,18 @@ async function runQuery<T>(
   options: RuntimePostgresQueryOptions | undefined,
   config: StoreRuntimePostgresOptions,
   logger: NormalizedStoreLogger | null,
-): Promise<{ rows: T[] }> {
-  validateRuntimePostgresQuery(sql, params, options);
+): Promise<RuntimePostgresQueryResult<T>> {
+  const invalid = validateQueryResult(sql, params, options);
+  if (invalid) {
+    return handleQueryError<T>(invalid, config);
+  }
   const started = Date.now();
   const caller = detectQueryCaller();
   try {
-    const result = await client.query<T>(sql, [...params]);
+    const result = await queryClient<T>(client, sql, params, caller, options, config, logger);
     logQuerySuccess(logger, sql, params, Date.now() - started, caller, options, config);
-    return result;
+    void config.metrics?.(metricEvent(Date.now() - started, options, true, rowCount(result)));
+    return envelopeSuccess(result, config);
   } catch (error) {
     logger?.error("store.postgres", "Postgres query failed.", {
       caller,
@@ -88,8 +102,62 @@ async function runQuery<T>(
       name: options?.name,
       operation: options?.operation,
     });
-    throw error;
+    void config.metrics?.(metricEvent(Date.now() - started, options, false, 0));
+    return handleQueryError<T>(error, config);
   }
+}
+
+async function queryClient<T>(
+  client: RuntimePostgresClient,
+  sql: string,
+  params: readonly unknown[],
+  caller: ReturnType<typeof detectQueryCaller>,
+  options: RuntimePostgresQueryOptions | undefined,
+  config: StoreRuntimePostgresOptions,
+  logger: NormalizedStoreLogger | null,
+) {
+  if (!client.connect) {
+    return client.query<T>(sql, [...params]);
+  }
+
+  const waitStarted = Date.now();
+  const pooled = await client.connect();
+  logPoolWait(client, Date.now() - waitStarted, caller, options, config, logger);
+  try {
+    return await pooled.query<T>(sql, [...params]);
+  } finally {
+    pooled.release?.();
+  }
+}
+
+function envelopeSuccess<T>(
+  result: { rows?: T[]; rowCount?: number },
+  config: StoreRuntimePostgresOptions,
+): RuntimePostgresQueryResult<T> {
+  const rows = Array.isArray(result.rows) ? result.rows : [];
+  return config.resultMode === "envelope" ? {
+    ok: true,
+    rowCount: rowCount(result),
+    rows,
+  } : {
+    rowCount: rowCount(result),
+    rows,
+  };
+}
+
+function handleQueryError<T>(error: unknown, config: StoreRuntimePostgresOptions): RuntimePostgresQueryResult<T> {
+  if (config.resultMode === "envelope") {
+    return {
+      error: true,
+      error_code: errorCode(error),
+      message: error instanceof Error ? error.message : String(error || "Postgres query failed."),
+      ok: false,
+      rowCount: 0,
+      rows: [],
+    };
+  }
+
+  throw error;
 }
 
 async function initPostgres(
@@ -157,26 +225,16 @@ async function runInternal(
   }
 }
 
-function validateRuntimePostgresQuery(
+function validateQueryResult(
   sql: string,
-  params: readonly unknown[] = [],
-  options: RuntimePostgresQueryOptions = {},
-): void {
-  if (!sql.trim()) {
-    throw new Error("Postgres query cannot be empty.");
-  }
-  if (hasSqlComment(sql)) {
-    throw new Error("Postgres application queries cannot contain SQL comments.");
-  }
-  if (hasMultipleStatements(sql)) {
-    throw new Error("Postgres application queries cannot contain multiple statements.");
-  }
-  const placeholder = validatePlaceholderOrder(sql, [...params]);
-  if (placeholder) {
-    throw new Error(placeholder.message);
-  }
-  if ((options.operation === "read" || options.operation === "write") && !options.allowLiterals && hasInlineStringLiteral(sql)) {
-    throw new Error("Postgres read/write queries cannot contain inline string literals.");
+  params: readonly unknown[],
+  options: RuntimePostgresQueryOptions | undefined,
+): Error | null {
+  try {
+    validateRuntimePostgresQuery(sql, params, options);
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -204,41 +262,64 @@ function logQuerySuccess(
   });
 }
 
+function logPoolWait(
+  client: RuntimePostgresClient,
+  elapsedMs: number,
+  caller: ReturnType<typeof detectQueryCaller>,
+  options: RuntimePostgresQueryOptions | undefined,
+  config: StoreRuntimePostgresOptions,
+  logger: NormalizedStoreLogger | null,
+): void {
+  if (elapsedMs < 100) {
+    return;
+  }
+  logger?.warn("store.postgres", "Postgres pool wait completed.", {
+    caller,
+    elapsedMs,
+    idle: client.idleCount || 0,
+    name: options?.name,
+    operation: options?.operation,
+    total: client.totalCount || 0,
+    waiting: client.waitingCount || 0,
+  });
+  void config.metrics?.(metricEvent(elapsedMs, options, true, 0));
+}
+
+function metricEvent(
+  elapsedMs: number,
+  options: RuntimePostgresQueryOptions | undefined,
+  success: boolean,
+  rowCountValue: number,
+) {
+  return {
+    elapsedMs,
+    name: options?.name,
+    operation: options?.operation,
+    rowCount: rowCountValue,
+    success,
+  };
+}
+
+function rowCount(result: { rows?: unknown[]; rowCount?: number }): number {
+  return Number.isFinite(Number(result.rowCount)) ? Number(result.rowCount) : result.rows?.length || 0;
+}
+
+function errorCode(error: unknown): string {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error || "").toLowerCase();
+  if (message.includes("empty")) return "query-empty";
+  if (message.includes("multiple")) return "query-multi-statement";
+  if (message.includes("comment")) return "query-comments-forbidden";
+  if (message.includes("placeholder")) return "query-placeholder-mismatch";
+  if (message.includes("literal")) return "query-literal-forbidden";
+  return "query-failed";
+}
+
 function attachPoolErrorLogger(client: RuntimePostgresClient, logger: NormalizedStoreLogger | null): void {
   client.on?.("error", (error) => {
     logger?.error("store.postgres", "Postgres pool error.", {
       error,
     });
   });
-}
-
-function redactDatabaseUrl(value: string | undefined): string | undefined {
-  if (!value) {
-    return value;
-  }
-
-  try {
-    const url = new URL(value);
-    if (url.password) {
-      url.password = "redacted";
-    }
-    if (url.username) {
-      url.username = "redacted";
-    }
-    return url.toString();
-  } catch {
-    return value.replace(/:\/\/([^:@/]+)(?::([^@/]+))?@/u, "://redacted:redacted@");
-  }
-}
-
-function detectQueryCaller(): { file?: string; line?: number } {
-  const stack = new Error().stack?.split("\n").slice(2) || [];
-  const frame = stack.find((line) => !line.includes("/runtime/postgres."));
-  const match = frame?.match(/(?:\()?(.*):(\d+):(\d+)\)?$/u);
-  return {
-    file: match?.[1],
-    line: match?.[2] ? Number(match[2]) : undefined,
-  };
 }
 
 function validateSchema(schemaInput?: string): string {
@@ -258,20 +339,13 @@ function tableName(schema: string, tableInput: string): string {
   return `${quoteIdentifier(schema)}.${quoteIdentifier(tableInput)}`;
 }
 
-function hasSqlComment(sql: string): boolean {
-  return /--|\/\*/u.test(sql);
-}
-
-function hasMultipleStatements(sql: string): boolean {
-  return sql.trim().replace(/;$/u, "").includes(";");
-}
-
-function hasInlineStringLiteral(sql: string): boolean {
-  return /'([^']|'')*'/u.test(sql);
-}
-
 function validateSqlFragment(value: string): void {
-  if (!value.trim() || hasSqlComment(value) || hasMultipleStatements(value)) {
+  try {
+    validateRuntimePostgresQuery(`select ${value}`, [], {
+      allowLiterals: true,
+      operation: "read",
+    });
+  } catch {
     throw new Error("Postgres index expression is not safe.");
   }
 }
@@ -290,7 +364,4 @@ function hashText(value: string): string {
 
 export {
   createRuntimePostgres,
-  detectQueryCaller,
-  redactDatabaseUrl,
-  validateRuntimePostgresQuery,
 };

@@ -11,8 +11,7 @@ const entities = defineEntityRegistry({
     aliases: ["document", "docs"],
     context: ["workspaceId"],
     metadata: {
-      icon: "file-text",
-      name: "Document",
+      owner: "content",
     },
     modes: {
       detail: {

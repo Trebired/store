@@ -3,6 +3,7 @@ import { expect, test } from "bun:test";
 import {
   computed,
   countBy,
+  createRedisMemoAdapter,
   createStoreRuntime,
   redactDatabaseUrl,
   relation,
@@ -71,6 +72,117 @@ test("logs redacted Postgres URLs, caller metadata, and initializes schema table
   expect(client.sql.some((sql) => sql.includes("using gin (record)"))).toBe(true);
   expect(client.sql.some((sql) => sql.includes("(record->>'status')"))).toBe(true);
   expect(client.params.some((params) => params[0] === "migration")).toBe(true);
+});
+
+test("normalizes concise runtime registries and with-prefixed hooks", async () => {
+  const seenHooks: string[] = [];
+  const runtime = createStoreRuntime({
+    entities: {
+      users: {
+        aliases: [
+          "user",
+        ],
+        source: {
+          owner: "test",
+        },
+        modes: {
+          view: {
+            "with-profile": true,
+            "with-settings": true,
+          },
+        },
+        private: {
+          token: "Token",
+        },
+        required: [
+          "tenant_id",
+        ],
+        storage: "memory",
+        table: "users",
+      },
+    },
+    modes: {
+      legacyHookAdapter({ hook }) {
+        seenHooks.push(hook);
+        return (record) => ({
+          ...record,
+          [hook]: true,
+        });
+      },
+    },
+  });
+
+  await runtime.entity.write.put("user", {
+    tenant_id: "t1",
+  }, {
+    id: "user_1",
+    token: "secret",
+  });
+  const read = await runtime.entity.read.by("users", {
+    id: "user_1",
+  }, {
+    tenant_id: "t1",
+  }, {
+    mode: "view",
+  });
+
+  expect(read.data).toMatchObject({
+    profile: true,
+    settings: true,
+  });
+  expect(read.data?.token).toBeUndefined();
+  expect(seenHooks).toEqual([
+    "profile",
+    "settings",
+  ]);
+});
+
+test("fails fast for invalid runtime registry definitions", () => {
+  expect(() => createStoreRuntime({
+    entities: {
+      bad: {
+        table: "",
+      },
+    },
+  })).toThrow("requires a table");
+});
+
+test("returns Postgres envelope results for success and validation failures", async () => {
+  const client = new CapturePostgresClient([
+    {
+      id: "row_1",
+    },
+  ]);
+  const runtime = createStoreRuntime({
+    entities: {
+      rows: {
+        table: "rows",
+      },
+    },
+    postgres: {
+      client,
+      resultMode: "envelope",
+    },
+  });
+
+  const success = await runtime.postgres.query("select $1", ["ok"], {
+    operation: "read",
+  });
+  const failure = await runtime.postgres.query("select 'inline'", [], {
+    operation: "read",
+  });
+
+  expect(success).toMatchObject({
+    ok: true,
+    rowCount: 1,
+  });
+  expect(failure).toMatchObject({
+    error: true,
+    error_code: "query-literal-forbidden",
+    ok: false,
+    rowCount: 0,
+    rows: [],
+  });
 });
 
 test("runs boot fixes with matching, set, unset, set_if_missing, rewrites, follow-ups, and skip rules", async () => {
@@ -256,7 +368,51 @@ test("runtime memo supports stable keys, inflight dedupe, L1/L2 reads, entity in
   expect(runtime.memo.inspectRead("shared", "rows").hit).toBe("l1");
   await runtime.memo.invalidateEntity("rows");
   expect(runtime.memo.entityVersion("rows")).toBe(2);
-  expect(await runtime.memo.get<string>("shared")).toBe("value");
+  expect(await runtime.memo.get<string>("shared")).toBe(null);
+  expect(runtime.memo.inspectRead("shared", "rows")).toMatchObject({
+    cached: false,
+    invalidated: true,
+    invalidatedVersion: 2,
+  });
+});
+
+test("redis memo adapter supports JSON L2 and cross-process invalidation", async () => {
+  let subscribed: ((payload: unknown) => void) | null = null;
+  const remote = new Map<string, unknown>();
+  const adapter = createRedisMemoAdapter({
+    getJson: async <T>(key: string) => remote.get(key) as T | null ?? null,
+    publishJson: async (_channel, payload) => {
+      subscribed?.(payload);
+    },
+    setJson: async (key, value) => {
+      remote.set(key, value);
+    },
+    subscribeJson: async (_channel, handler) => {
+      subscribed = handler;
+    },
+  });
+  const runtime = createStoreRuntime({
+    entities: {
+      rows: {
+        table: "rows",
+      },
+    },
+    memo: {
+      l2: adapter,
+      redis: adapter,
+    },
+  });
+
+  await runtime.memo.set("remote", {
+    ok: true,
+  }, {
+    entity: "rows",
+  });
+  expect(await runtime.memo.get<{ ok: boolean }>("remote")).toEqual({
+    ok: true,
+  });
+  await runtime.memo.invalidateEntity("rows");
+  expect(await runtime.memo.get("remote")).toBe(null);
 });
 
 test("declarative hydration supports relation, counts, computed fields, and request memo reuse", async () => {
@@ -363,6 +519,9 @@ test("runtime lets a small app use entities, hooks, boot fixes, Postgres config,
               },
               set: {
                 status: "ready",
+                touched_at: {
+                  ctx: "now_iso",
+                },
               },
             },
           ],
@@ -392,7 +551,7 @@ test("runtime lets a small app use entities, hooks, boot fixes, Postgres config,
     },
     modes: {
       legacyHookAdapter({ hook }) {
-        if (hook !== "with-label") {
+        if (hook !== "label") {
           return null;
         }
         return (record) => ({
@@ -418,21 +577,74 @@ test("runtime lets a small app use entities, hooks, boot fixes, Postgres config,
     label: "Item item_1",
     status: "ready",
   });
+  expect(typeof detail.data?.touched_at).toBe("string");
   expect(writes).toEqual([
     "items:put",
     "items:put",
   ]);
 });
 
+test("routes provider-backed virtual sub-entities through entity reads", async () => {
+  const runtime = createStoreRuntime({
+    entities: {
+      parents: {
+        table: "parents",
+      },
+    },
+    subEntities: {
+      "parents.children": {
+        kind: "provider",
+        validateContext(context) {
+          return context.parent_id ? {
+            ctx: context,
+            ok: true,
+          } : {
+            error_code: "store-invalid-context",
+            message: "Missing parent id.",
+            ok: false,
+          } as any;
+        },
+        by: async (where: Record<string, unknown>) => where.id === "child_1" ? {
+          id: "child_1",
+        } : null,
+        count: async () => 1,
+        list: async () => [
+          {
+            id: "child_1",
+          },
+        ],
+      },
+    },
+  });
+
+  expect((await runtime.entity.read.all("parents.children", {
+    parent_id: "parent_1",
+  })).data?.map((row) => row.id)).toEqual(["child_1"]);
+  expect((await runtime.entity.read.by("parents.children", {
+    id: "child_1",
+  }, {
+    parent_id: "parent_1",
+  })).data?.id).toBe("child_1");
+  expect((await runtime.entity.read.count("parents.children", {
+    parent_id: "parent_1",
+  })).data).toBe(1);
+  expect((await runtime.entity.read.hasAny("parents.children", {
+    parent_id: "parent_1",
+  })).data).toBe(true);
+  expect((await runtime.entity.read.all("parents.children", {})).error_code).toBe("store-invalid-context");
+});
+
 class CapturePostgresClient implements RuntimePostgresClient {
   readonly params: unknown[][] = [];
   readonly sql: string[] = [];
+
+  constructor(private readonly rows: Record<string, unknown>[] = []) {}
 
   async query<T = Record<string, unknown>>(sql: string, params: readonly unknown[] = []): Promise<{ rows: T[] }> {
     this.sql.push(sql);
     this.params.push([...params]);
     return {
-      rows: [],
+      rows: this.rows as T[],
     };
   }
 }

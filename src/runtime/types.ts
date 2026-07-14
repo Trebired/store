@@ -19,8 +19,10 @@ export type RuntimeEntityRegistry = Record<string, RuntimeEntityDefinition>;
 
 export interface RuntimeEntityDefinition extends Omit<EntityDefinition, "storage" | "modes"> {
   required?: readonly string[];
+  private?: Record<string, string | readonly string[] | true>;
   storage?: string;
   modes?: Record<string, RuntimeEntityModeDefinition>;
+  [key: string]: unknown;
 }
 
 export interface RuntimeEntityModeDefinition {
@@ -31,6 +33,7 @@ export interface RuntimeEntityModeDefinition {
   metadata?: Record<string, unknown>;
   select?(record: StoreRecord): StoreRecord;
   with?: RuntimeHydrationMap;
+  [key: string]: unknown;
 }
 
 export type RuntimeHydrationMap = Record<string, RuntimeHydrationDeclaration>;
@@ -83,7 +86,7 @@ export interface StoreRuntimeCreateOptions<TRegistry extends RuntimeEntityRegist
   boot?: StoreRuntimeBootOptions;
   memo?: StoreRuntimeMemoOptions;
   events?: StoreRuntimeEvents;
-  subEntities?: SubEntityRegistry;
+  subEntities?: SubEntityRegistry | RuntimeProviderSubEntityRegistry;
   logger?: StoreLogger;
   loggerAdapter?: StoreLoggerAdapter;
 }
@@ -97,6 +100,9 @@ export interface StoreRuntimePostgresOptions {
   migrations?: readonly RuntimePostgresMigration[];
   slowQueryMs?: number;
   logOperations?: boolean;
+  resultMode?: "throw" | "envelope";
+  logger?: StoreLogger;
+  metrics?(event: RuntimePostgresMetricsEvent): MaybePromise<void>;
 }
 
 export interface StoreRuntimePostgresPoolOptions {
@@ -108,7 +114,19 @@ export interface StoreRuntimePostgresPoolOptions {
 
 export interface RuntimePostgresClient {
   query<T = Record<string, unknown>>(sql: string, params?: readonly unknown[]): Promise<{ rows: T[] }>;
+  connect?(): Promise<RuntimePostgresClient & { release?(): void }>;
   on?(event: "error", handler: (error: unknown) => void): void;
+  idleCount?: number;
+  totalCount?: number;
+  waitingCount?: number;
+}
+
+export interface RuntimePostgresMetricsEvent {
+  elapsedMs: number;
+  operation?: string;
+  name?: string;
+  success: boolean;
+  rowCount: number;
 }
 
 export interface RuntimePostgresIndex {
@@ -121,7 +139,7 @@ export interface RuntimePostgresIndex {
 export type RuntimePostgresMigration = (api: RuntimePostgresMigrationApi) => MaybePromise<void>;
 
 export interface RuntimePostgresMigrationApi {
-  query(sql: string, params?: readonly unknown[]): Promise<{ rows: unknown[] }>;
+  query(sql: string, params?: readonly unknown[]): Promise<RuntimePostgresQueryResult<unknown>>;
   schema: string;
 }
 
@@ -139,6 +157,13 @@ export interface StoreRuntimeBootOptions {
   fixes?: readonly RuntimeBootFix[];
   rewrites?: RuntimeRewriteRegistry;
   followUps?: RuntimeFollowUpRegistry;
+  context?: StoreContext;
+  environment?: {
+    developerMode?: boolean;
+    splitDev?: boolean;
+    [key: string]: unknown;
+  };
+  onResult?(result: RuntimeBootResult): MaybePromise<void>;
   developerMode?: boolean;
   splitDev?: boolean;
 }
@@ -241,8 +266,9 @@ export interface StoreRuntimeWriteEvent {
 export interface StoreRuntimeMemoOptions {
   redis?: RuntimeRemoteInvalidationAdapter;
   l1?: false | RuntimeL1MemoOptions;
-  l2?: L2CacheAdapter;
+  l2?: L2CacheAdapter | RuntimeJsonMemoAdapter;
   ignoredKeys?: readonly string[];
+  invalidationTtlMs?: number;
 }
 
 export interface RuntimeL1MemoOptions {
@@ -255,6 +281,17 @@ export interface RuntimeRemoteInvalidationAdapter {
   subscribe?(channel: string, handler: (message: string) => void): MaybePromise<void>;
 }
 
+export interface RuntimeRedisMemoAdapterInput {
+  getJson<T = unknown>(key: string): MaybePromise<T | null>;
+  setJson<T = unknown>(key: string, value: T, ttlMs?: number): MaybePromise<unknown>;
+  del?(key: string): MaybePromise<unknown>;
+  incr?(key: string): MaybePromise<number>;
+  publishJson?(channel: string, payload: unknown): MaybePromise<unknown>;
+  subscribeJson?(channel: string, handler: (payload: unknown) => void): MaybePromise<unknown>;
+}
+
+export interface RuntimeJsonMemoAdapter extends L2CacheAdapter, RuntimeRemoteInvalidationAdapter {}
+
 export interface StoreRuntimeMemo {
   get<T>(key: string): Promise<T | null>;
   set<T>(key: string, value: T, options?: { ttlMs?: number; entity?: string }): Promise<void>;
@@ -266,6 +303,12 @@ export interface StoreRuntimeMemo {
 }
 
 export interface RuntimeMemoInspection {
+  enabled: boolean;
+  cached: boolean;
+  inflight: boolean;
+  invalidated: boolean;
+  invalidatedAt: string;
+  invalidatedVersion: number;
   hit: "l1" | "l2" | "miss";
   key: string;
   version: number;
@@ -286,9 +329,22 @@ export interface StoreRuntimePostgres {
     sql: string,
     params?: readonly unknown[],
     options?: RuntimePostgresQueryOptions,
-  ): Promise<{ rows: T[] }>;
+  ): Promise<RuntimePostgresQueryResult<T>>;
   init(): Promise<void>;
 }
+
+export type RuntimePostgresQueryResult<T = Record<string, unknown>> = {
+  ok?: true;
+  rows: T[];
+  rowCount?: number;
+} | {
+  ok: false;
+  error: true;
+  error_code: string;
+  message: string;
+  rows: [];
+  rowCount: 0;
+};
 
 export interface RuntimePostgresQueryOptions {
   operation?: "read" | "write" | "ddl" | "migration";
@@ -300,6 +356,22 @@ export interface StoreRuntimeFacade extends Pick<Store, "cache" | "entity" | "in
   onBoot(): Promise<RuntimeBootResult>;
   postgres: StoreRuntimePostgres;
   memo: StoreRuntimeMemo;
+}
+
+export type RuntimeProviderSubEntityRegistry = Record<string, RuntimeProviderSubEntityDefinition>;
+
+export interface RuntimeProviderSubEntityDefinition {
+  kind: "provider";
+  validateContext?(context: StoreContext): StoreResult<true> | { ok: true; ctx?: StoreContext } | null | undefined;
+  list?(context: StoreContext, options: StoreReadOptions, api: RuntimeProviderSubEntityApi): MaybePromise<StoreRecord[]>;
+  by?(where: StoreWhere, context: StoreContext, options: StoreReadOptions, api: RuntimeProviderSubEntityApi): MaybePromise<StoreRecord | null>;
+  count?(context: StoreContext, options: StoreReadOptions, api: RuntimeProviderSubEntityApi): MaybePromise<number>;
+}
+
+export interface RuntimeProviderSubEntityApi {
+  readAll(entity: string, context: StoreContext, options?: StoreReadOptions): Promise<StoreResult<StoreRecord[]>>;
+  readById(entity: string, id: string, context: StoreContext, options?: StoreReadOptions): Promise<StoreResult<StoreRecord | null>>;
+  recorded_at: string;
 }
 
 export interface NormalizedRuntimeConfig {

@@ -43,7 +43,9 @@
     "#4f4sym6qlwt3": "./src/records/views.ts",
     "#613yyghfyv0a": "./src/core/enriched.ts",
     "#63uidh5cqxke": "./src/runtime/boot.ts",
+    "#8cbzjjgc892p": "./src/runtime/registry.ts",
     "#8pewakkhamie": "./src/entity/registry.ts",
+    "#a5xqu1rq2q04": "./src/runtime/provider-subentity.ts",
     "#a8a6v712yhzg": "./examples/basic.ts",
     "#b4e4gjc7njzb": "./src/core/read.ts",
     "#b9rnmvf9p9z3": "./src/storage/postgres/jsonb.ts",
@@ -60,6 +62,7 @@
     "#nlliejgv8p5m": "./tb.code-discipline.ts",
     "#oz5habwl5021": "./src/cache/cache.ts",
     "#pq1c0xwc48qu": "./src/runtime/types.ts",
+    "#qcbwdtdi8gun": "./src/runtime/postgres-safety.ts",
     "#r05cko7a02f8": "./src/core/private.ts",
     "#rc6d5lmoaws9": "./examples/postgres.ts",
     "#rzbzgbo1ebc2": "./test/specs/postgres.spec.ts",
@@ -103,5 +106,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.4.0"
+  "version": "0.5.0"
 }

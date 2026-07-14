@@ -60,8 +60,7 @@ const entities = defineEntityRegistry({
     context: ["workspaceId"],
     aliases: ["document", "docs"],
     metadata: {
-      icon: "file-text",
-      name: "Document",
+      owner: "content",
     },
     privateFields: {
       token: "documents:private",
@@ -136,9 +135,19 @@ The high-level factory is `createStoreRuntime(options)`.
 import {
   computed,
   countBy,
+  createRedisMemoAdapter,
   createStoreRuntime,
   relation,
 } from "@trebired/store";
+
+const redisMemo = createRedisMemoAdapter({
+  getJson: redis.getJson,
+  setJson: redis.setJson,
+  del: redis.del,
+  incr: redis.incr,
+  publishJson: redis.publishJson,
+  subscribeJson: redis.subscribeJson,
+});
 
 const runtime = createStoreRuntime({
   entities: {
@@ -146,13 +155,20 @@ const runtime = createStoreRuntime({
       table: "items",
       aliases: ["item"],
       required: ["workspaceId"],
+      private: {
+        token: "items:private",
+      },
       metadata: {
-        icon: "box",
+        owner: "runtime",
       },
       modes: {
         detail: {
+          // Concise mode hook maps strip the "with-" prefix before loading hooks.
+          // This loads hooks named "label" and "audit".
+          "with-label": true,
           hooks: {
             "with-label": true,
+            "with-audit": true,
           },
           with: {
             owner: relation({
@@ -180,6 +196,9 @@ const runtime = createStoreRuntime({
   postgres: {
     databaseUrl: process.env.DATABASE_URL,
     schema: "public",
+    resultMode: "envelope",
+    logOperations: true,
+    slowQueryMs: 250,
     pool: {
       max: 10,
       idleTimeoutMs: 30_000,
@@ -194,9 +213,13 @@ const runtime = createStoreRuntime({
     ],
     migrations: [
       async ({ query }) => {
-        await query("select $1", ["migration-ok"]);
+        const result = await query("select $1", ["migration-ok"]);
+        if (result.ok === false) throw new Error(result.message);
       },
     ],
+    metrics(event) {
+      console.log(event.operation, event.elapsedMs);
+    },
   },
   modes: {
     hookRoot: new URL("./entities/", import.meta.url),
@@ -206,6 +229,13 @@ const runtime = createStoreRuntime({
     },
   },
   boot: {
+    context: {
+      now_iso: new Date().toISOString(),
+    },
+    environment: {
+      developerMode: process.env.NODE_ENV === "development",
+      splitDev: process.env.SPLIT_DEV === "1",
+    },
     fixes: [
       {
         entity: "items",
@@ -217,6 +247,9 @@ const runtime = createStoreRuntime({
             },
             set: {
               status: "stopped",
+              stopped_at: {
+                ctx: "now_iso",
+              },
             },
             unset: [
               "runtime.pid",
@@ -243,7 +276,22 @@ const runtime = createStoreRuntime({
       maxEntries: 500,
       ttlMs: 30_000,
     },
-    l2: redisLikeAdapter,
+    l2: redisMemo,
+    redis: redisMemo,
+  },
+  subEntities: {
+    "items.children": {
+      kind: "provider",
+      validateContext(ctx) {
+        return ctx.item_id ? { ok: true, ctx } : { ok: false };
+      },
+      async list(ctx, options, api) {
+        return api.readAll("children", ctx, options).then((res) => res.data || []);
+      },
+      async count(ctx) {
+        return Number(ctx.item_id ? 1 : 0);
+      },
+    },
   },
   events: {
     onWrite({ entity, operation }) {
@@ -270,11 +318,15 @@ Runtime Postgres:
 - creates a pool from explicit `databaseUrl` and pool options, or uses an injected client for tests and custom hosts
 - redacts database URLs in logs
 - validates application queries for empty SQL, comments, multiple statements, placeholder order, and inline read/write literals
-- logs pool creation, first connection, pool errors, slow queries, query failures, and optional operation logs
+- supports `resultMode: "envelope"` for `{ ok, rows, rowCount }` success and structured `{ ok: false, error_code, message }` failures
+- logs pool creation, first connection, pool waits, pool errors, slow queries, query failures, and optional operation logs
+- calls an optional query metrics callback
 - creates the schema, JSONB entity tables, default GIN indexes, extra expression indexes, and safe migration hooks
 - wires the package PostgreSQL JSONB adapter internally
 
-Runtime boot reconciliation supports generic `fixes` with `if`, `if_all`, nested field paths, `equals`, `equals_any`, `gt`, `set`, `set_if_missing`, `unset`, `rewrite`, `after`, `run_after_on_match`, `skip_in_developer_mode`, and `skip_in_split_dev`. The package queues and runs app-owned follow-up callbacks, but does not know what those callbacks do.
+Runtime registry normalization supports concise app-owned entity definitions. `required` becomes `context`, `private` becomes `privateFields`, and mode hooks such as `"with-profile": true` load hook name `"profile"`. Unknown fields can be preserved as opaque metadata, but the package does not interpret display or presentation metadata.
+
+Runtime boot reconciliation supports generic `fixes` with `if`, `if_all`, nested field paths, `equals`, `equals_any`, `gt`, `set`, `set_if_missing`, `unset`, `rewrite`, `after`, `run_after_on_match`, `skip_in_developer_mode`, and `skip_in_split_dev`. Boot values can resolve from context with `{ ctx: "now_iso" }`. The package queues and runs app-owned follow-up callbacks, but does not know what those callbacks do.
 
 Runtime memo exposes:
 
@@ -287,6 +339,8 @@ Runtime memo exposes:
 - `runtime.memo.entityVersion(...)`
 
 Stable memo keys ignore request/runtime-only fields such as `req`, `res`, `meta`, `frontend`, `cacheBypass`, and `cache`.
+
+Provider-backed virtual sub-entities can be declared under `subEntities` with `kind: "provider"` and are routed through `runtime.entity.read.all/by/count/hasAny(...)`.
 
 For lower-level integrations, `createStore(options)` remains available.
 
@@ -348,8 +402,7 @@ const entities = defineEntityRegistry({
     context: ["workspaceId"],
     aliases: ["document", "docs"],
     metadata: {
-      icon: "file-text",
-      name: "Document",
+      owner: "content",
     },
     privateFields: {
       token: "documents:private",
@@ -368,7 +421,6 @@ Helpers:
 - `defineEntityRegistry(registry)`
 - `resolveEntityName(registry, nameOrAlias)`
 - `resolveEntityDefinition(registry, nameOrAlias)`
-- `resolveEntityIcon(registry, nameOrAlias)`
 - `resolveEntityMetadata(registry, nameOrAlias)`
 
 Resolution supports the canonical key, singular/plural forms, and explicit aliases.

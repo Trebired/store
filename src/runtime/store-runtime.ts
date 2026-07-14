@@ -6,7 +6,6 @@ import { createMemoryStorageAdapter } from "#mq84z0z7glm9";
 import { createPostgresJsonbStorageAdapter } from "#b9rnmvf9p9z3";
 import { resolveEntityName } from "#8pewakkhamie";
 import type {
-  EntityRegistry,
   ModeEnricher,
   ModeEnricherRegistry,
   Store,
@@ -17,9 +16,12 @@ import { createBootRunner } from "./boot.js";
 import { createHydrationEnrichers } from "./hydration.js";
 import { createRuntimeMemo } from "./memo.js";
 import { createRuntimePostgres } from "./postgres.js";
+import {
+  isProviderSubEntityRegistry,
+  wrapProviderSubEntities,
+} from "./provider-subentity.js";
+import { normalizeRuntimeEntities } from "./registry.js";
 import type {
-  RuntimeEntityDefinition,
-  RuntimeEntityRegistry,
   StoreRuntimeCreateOptions,
   StoreRuntimeEvents,
   StoreRuntimeFacade,
@@ -28,8 +30,9 @@ import type {
 
 function createStoreRuntime(options: StoreRuntimeCreateOptions): StoreRuntimeFacade {
   const logger = resolveLogger(options.logger, options.loggerAdapter);
-  const entities = normalizeEntities(options.entities, Boolean(options.postgres));
-  const postgresRuntime = createRuntimePostgres(options.postgres, entities, logger);
+  const entities = normalizeRuntimeEntities(options.entities, Boolean(options.postgres));
+  const postgresLogger = resolveLogger(options.postgres?.logger || options.logger, options.loggerAdapter);
+  const postgresRuntime = createRuntimePostgres(options.postgres, entities, postgresLogger || logger);
   const memo = createRuntimeMemo(options.memo);
   let store: Store;
   const enrichers = createRuntimeEnrichers(options, () => store);
@@ -42,16 +45,14 @@ function createStoreRuntime(options: StoreRuntimeCreateOptions): StoreRuntimeFac
     enrichers,
     logger: options.logger,
     loggerAdapter: options.loggerAdapter,
-    storages: {
-      memory: createMemoryStorageAdapter(),
-      postgres: createPostgresJsonbStorageAdapter({
-        client: postgresRuntime.client,
-        schema: postgresRuntime.schema,
-      }),
-    },
-    subEntities: options.subEntities,
+    storages: createRuntimeStorages(postgresRuntime),
+    subEntities: isProviderSubEntityRegistry(options.subEntities) ? undefined : options.subEntities,
   });
-  const entity = wrapEntityEvents(store.entity, options.events?.onWrite, (name) => resolveEntityName(entities, name) || name);
+  const read = wrapProviderSubEntities(store.entity.read, isProviderSubEntityRegistry(options.subEntities) ? options.subEntities : undefined);
+  const entity = wrapEntityEvents({
+    read,
+    write: store.entity.write,
+  }, options.events?.onWrite, (name) => resolveEntityName(entities, name) || name);
   const boot = createBootRunner({
     entity,
   }, options.boot);
@@ -76,22 +77,13 @@ function createStoreRuntime(options: StoreRuntimeCreateOptions): StoreRuntimeFac
   };
 }
 
-function normalizeEntities(entities: RuntimeEntityRegistry, hasPostgres: boolean): EntityRegistry {
-  return Object.fromEntries(Object.entries(entities).map(([name, definition]) => [
-    name,
-    normalizeEntity(definition, hasPostgres),
-  ]));
-}
-
-function normalizeEntity(definition: RuntimeEntityDefinition, hasPostgres: boolean) {
+function createRuntimeStorages(postgresRuntime: ReturnType<typeof createRuntimePostgres>) {
   return {
-    aliases: definition.aliases,
-    context: definition.context || definition.required,
-    metadata: definition.metadata,
-    modes: definition.modes,
-    privateFields: definition.privateFields,
-    storage: definition.storage || (hasPostgres ? "postgres" : "memory"),
-    table: definition.table,
+    memory: createMemoryStorageAdapter(),
+    postgres: createPostgresJsonbStorageAdapter({
+      client: postgresRuntime.client,
+      schema: postgresRuntime.schema,
+    }),
   };
 }
 
@@ -101,7 +93,7 @@ function createRuntimeEnrichers(
 ): ModeEnricherRegistry {
   const hydration = createHydrationEnrichers(options.entities, getStore);
   const hooks = createModeEnricherRegistry({
-    entities: normalizeEntities(options.entities, Boolean(options.postgres)),
+    entities: normalizeRuntimeEntities(options.entities, Boolean(options.postgres)),
     getStore,
     loadHook: (input) => loadRuntimeHook(options.modes, input),
   });

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0
+
+- Added package-owned normalization for concise runtime entity registries, including `required`, `private`, concise mode hook maps, and automatic `"with-"` hook-name stripping.
+- Added strict runtime registry validation so invalid definitions fail during runtime creation.
+- Expanded runtime PostgreSQL support with envelope result mode, query metrics callbacks, one-time init guarding, pool wait logging, and structured query validation errors.
+- Added `createRedisMemoAdapter(...)` plus richer runtime memo inspection, stale L2 entry rejection, entity invalidation metadata, and cross-process invalidation wiring.
+- Extended boot reconciliation with runtime context/environment config, `{ ctx: "..." }` value resolvers, stable change detection, strict record id failure reporting, and result callbacks.
+- Added first-class provider-backed virtual sub-entities routed through `runtime.entity.read.*`.
+
 ## 0.4.0
 
 - Added `createStoreRuntime(...)`, a high-level runtime facade that exposes entity, cache, records, repair, sub-entity, Postgres, memo, and boot APIs from one package-owned bootstrap.

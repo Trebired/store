@@ -21,6 +21,7 @@ function createBootRunner(store: Pick<Store, "entity">, options: StoreRuntimeBoo
     }
     await runFollowUps(options, result);
     result.followUpCount = result.queuedFollowUps.length;
+    await options.onResult?.(result);
     return result;
   };
 }
@@ -31,7 +32,11 @@ async function runFix(
   options: StoreRuntimeBootOptions,
   result: RuntimeBootResult,
 ): Promise<void> {
-  const context = fix.context || {};
+  const context = {
+    now_iso: new Date().toISOString(),
+    ...(options.context || {}),
+    ...(fix.context || {}),
+  };
   const rows = await store.entity.read.all(fix.entity, context, {
     mode: "raw",
     scope: "all",
@@ -63,6 +68,13 @@ async function runActions(
 ): Promise<void> {
   let current = row;
   let changed = false;
+  if (!current.id) {
+    result.failures.push({
+      entity: fix.entity,
+      message: "Store boot record is missing an id.",
+    });
+    return;
+  }
   result.entities[fix.entity].scanned += 1;
   for (const action of fix.actions) {
     const skip = skipReason(action, options);
@@ -78,7 +90,7 @@ async function runActions(
     }
 
     const next = await applyAction(current, action, fix.entity, context, options.rewrites);
-    changed = changed || JSON.stringify(next) !== JSON.stringify(current);
+    changed = changed || stableStringify(next) !== stableStringify(current);
     current = next;
     if (action.run_after_on_match) {
       queueFollowUps(result, fix.entity, current, action.after || []);
@@ -118,11 +130,11 @@ async function applyAction(
     }) ?? next;
   }
   for (const [field, value] of Object.entries(action.set || {})) {
-    setPath(next, field, value);
+    setPath(next, field, resolveValue(value, context));
   }
   for (const [field, value] of Object.entries(action.set_if_missing || {})) {
     if (getPath(next, field) === undefined) {
-      setPath(next, field, value);
+      setPath(next, field, resolveValue(value, context));
     }
   }
   for (const field of action.unset || []) {
@@ -209,10 +221,20 @@ function skipReason(action: RuntimeBootAction, options: StoreRuntimeBootOptions)
   if (action.skip_in_developer_mode && options.developerMode) {
     return "developer-mode";
   }
-  if (action.skip_in_split_dev && options.splitDev) {
+  if (action.skip_in_developer_mode && options.environment?.developerMode) {
+    return "developer-mode";
+  }
+  if (action.skip_in_split_dev && (options.splitDev || options.environment?.splitDev)) {
     return "split-dev";
   }
   return null;
+}
+
+function resolveValue(value: unknown, context: StoreContext): unknown {
+  if (value && typeof value === "object" && !Array.isArray(value) && "ctx" in value) {
+    return context[String((value as { ctx: unknown }).ctx)] ?? "";
+  }
+  return value;
 }
 
 function getPath(row: StoreRecord, path: string): unknown {
@@ -259,6 +281,19 @@ function emptyResult(): RuntimeBootResult {
     queuedFollowUps: [] as RuntimeQueuedFollowUp[],
     skipped: [],
   };
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 export {

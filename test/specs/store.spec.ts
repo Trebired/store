@@ -8,7 +8,7 @@ import {
   getOrCreateRequestLoader,
   getOrCreateRequestValue,
   resolveEntityDefinition,
-  resolveEntityIcon,
+  resolveEntityMetadata,
   resolveEntityName,
   runWithStoreRequestContext,
 } from "#index";
@@ -19,8 +19,7 @@ const entities = defineEntityRegistry({
     aliases: ["library", "collections"],
     context: ["tenantId"],
     metadata: {
-      icon: "book",
-      name: "Library",
+      owner: "fixtures",
     },
     modes: {
       summary: {
@@ -66,7 +65,7 @@ test("resolves entities by name, singular, plural, explicit aliases, and metadat
   expect(resolveEntityName(entities, "library")).toBe("libraries");
   expect(resolveEntityName(entities, "collection")).toBe("libraries");
   expect(resolveEntityDefinition(entities, "collections")?.definition.table).toBe("libraries");
-  expect(resolveEntityIcon(entities, "library")).toBe("book");
+  expect(resolveEntityMetadata(entities, "library")?.owner).toBe("fixtures");
 });
 
 test("validates required context for scoped reads and allows all-scope reads", async () => {

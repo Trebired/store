@@ -42,10 +42,6 @@ function resolveEntityDefinition<TRecord = never>(
   } : null;
 }
 
-function resolveEntityIcon(registry: EntityRegistry, nameOrAlias: string): string | null {
-  return resolveEntityMetadata(registry, nameOrAlias)?.icon ?? null;
-}
-
 function resolveEntityMetadata(registry: EntityRegistry, nameOrAlias: string): EntityMetadata | null {
   return resolveEntityDefinition(registry, nameOrAlias)?.definition.metadata ?? null;
 }
@@ -89,7 +85,6 @@ function pluralize(value: string): string {
 export {
   defineEntityRegistry,
   resolveEntityDefinition,
-  resolveEntityIcon,
   resolveEntityMetadata,
   resolveEntityName,
 };

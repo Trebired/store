@@ -6,10 +6,10 @@ export {
   countBy,
   relation,
 } from "./runtime/hydration.js";
+export { createRedisMemoAdapter } from "./runtime/memo.js";
 export {
   defineEntityRegistry,
   resolveEntityDefinition,
-  resolveEntityIcon,
   resolveEntityMetadata,
   resolveEntityName,
 } from "./entity/registry.js";
@@ -32,7 +32,7 @@ export {
   detectQueryCaller,
   redactDatabaseUrl,
   validateRuntimePostgresQuery,
-} from "./runtime/postgres.js";
+} from "./runtime/postgres-safety.js";
 
 export type {
   CreateStoreOptions,
@@ -133,9 +133,16 @@ export type {
   RuntimePostgresMigration,
   RuntimePostgresMigrationApi,
   RuntimePostgresQueryOptions,
+  RuntimePostgresQueryResult,
+  RuntimePostgresMetricsEvent,
+  RuntimeProviderSubEntityApi,
+  RuntimeProviderSubEntityDefinition,
+  RuntimeProviderSubEntityRegistry,
   RuntimeQueuedFollowUp,
+  RuntimeRedisMemoAdapterInput,
   RuntimeRelationHydration,
   RuntimeRemoteInvalidationAdapter,
+  RuntimeJsonMemoAdapter,
   RuntimeRewrite,
   RuntimeRewriteRegistry,
   StoreRuntimeBootOptions,
