@@ -214,18 +214,38 @@ export interface RuntimeFollowUpConfig {
 export type RuntimeFollowUpRegistry = Record<string, RuntimeFollowUp>;
 
 export type RuntimeFollowUp = (input: {
+  call: string;
   entity: string;
   record: StoreRecord;
   config?: StoreWhere;
-}) => MaybePromise<void>;
+}) => MaybePromise<void | RuntimeBootFollowUpOutcome>;
 
 export interface RuntimeBootResult {
   changedCount: number;
   entities: Record<string, RuntimeBootEntityResult>;
   queuedFollowUps: RuntimeQueuedFollowUp[];
   followUpCount: number;
+  followUpsRunCount: number;
+  followUps: RuntimeBootFollowUpOutcome[];
   failures: RuntimeBootFailure[];
   skipped: RuntimeBootSkipped[];
+}
+
+export interface RuntimeBootFollowUpOutcome {
+  call: string;
+  entity: string;
+  recordId?: string;
+  skipped: boolean;
+  ok: boolean;
+  result?: unknown;
+  message?: string;
+  error_code?: string;
+  error?: boolean;
+  noop?: boolean;
+  status?: number;
+  data?: unknown;
+  details?: unknown;
+  meta?: Record<string, unknown>;
 }
 
 export interface RuntimeBootEntityResult {

@@ -1,10 +1,18 @@
 import type { Store } from "#y31thwq3bdf0";
+import {
+  BOOT_FOLLOW_UP_DISPATCH,
+  bootFollowUpFailed,
+  bootFollowUpSkipped,
+  bootFollowUpSucceeded,
+} from "./boot/followups.js";
 import type {
   RuntimeBootAction,
   RuntimeBootCondition,
   RuntimeBootFailure,
+  RuntimeBootFollowUpOutcome,
   RuntimeBootFix,
   RuntimeBootResult,
+  RuntimeFollowUp,
   RuntimeFollowUpConfig,
   RuntimeQueuedFollowUp,
   RuntimeRewrite,
@@ -21,6 +29,7 @@ function createBootRunner(store: Pick<Store, "entity">, options: StoreRuntimeBoo
     }
     await runFollowUps(options, result);
     result.followUpCount = result.queuedFollowUps.length;
+    result.followUpsRunCount = result.followUps.filter((outcome) => !outcome.skipped).length;
     await options.onResult?.(result);
     return result;
   };
@@ -182,15 +191,26 @@ function resolveRewrite(
 
 async function runFollowUps(options: StoreRuntimeBootOptions, result: RuntimeBootResult): Promise<void> {
   for (const queued of result.queuedFollowUps) {
+    const handler = resolveFollowUp(options, queued.call);
     try {
-      await options.followUps?.[queued.call]?.({
+      if (!handler) {
+        result.followUps.push(bootFollowUpSkipped(queued.call, queued.entity, {
+          message: "Boot follow-up call is not registered.",
+          recordId: queued.recordId,
+        }));
+        continue;
+      }
+      const outcome = await handler({
+        call: queued.call,
         config: queued.config,
         entity: queued.entity,
         record: queued.record || {
           id: queued.recordId,
         },
       });
+      result.followUps.push(normalizeFollowUpOutcome(outcome, queued));
     } catch (error) {
+      result.followUps.push(bootFollowUpFailed(queued.call, queued.entity, error, queued.recordId));
       result.failures.push({
         entity: queued.entity,
         id: queued.recordId,
@@ -198,6 +218,26 @@ async function runFollowUps(options: StoreRuntimeBootOptions, result: RuntimeBoo
       });
     }
   }
+}
+
+function resolveFollowUp(options: StoreRuntimeBootOptions, call: string): RuntimeFollowUp | undefined {
+  const registry = options.followUps as (StoreRuntimeBootOptions["followUps"] & {
+    [BOOT_FOLLOW_UP_DISPATCH]?: RuntimeFollowUp;
+  }) | undefined;
+  return registry?.[call] || registry?.[BOOT_FOLLOW_UP_DISPATCH];
+}
+
+function normalizeFollowUpOutcome(
+  outcome: void | RuntimeBootFollowUpOutcome,
+  queued: RuntimeQueuedFollowUp,
+): RuntimeBootFollowUpOutcome {
+  if (outcome && typeof outcome === "object" && "skipped" in outcome) {
+    return {
+      recordId: queued.recordId,
+      ...outcome,
+    };
+  }
+  return bootFollowUpSucceeded(queued.call, queued.entity, undefined, queued.recordId);
 }
 
 function queueFollowUps(
@@ -278,6 +318,8 @@ function emptyResult(): RuntimeBootResult {
     entities: {},
     failures: [] as RuntimeBootFailure[],
     followUpCount: 0,
+    followUps: [],
+    followUpsRunCount: 0,
     queuedFollowUps: [] as RuntimeQueuedFollowUp[],
     skipped: [],
   };

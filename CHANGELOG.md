@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0
+
+- Added `createBootFollowUpDispatcher(...)` with generic call lookup, structured skipped/success/failure outcomes, exception handling, optional boolean policy checks, readiness guard polling, timeout skips, and package-owned follow-up log metadata.
+- Added boot follow-up result helpers and `readBootBoolean(...)` for hosts that need direct control while keeping result envelopes consistent.
+- Expanded `RuntimeBootResult` with `followUps` and `followUpsRunCount` so queued follow-up outcomes are visible alongside boot changes and failures.
+- Added boot rewrite builders including `createBootRewriter(...)`, `bootRecord(...)`, alias/default/nested/object/array/string/number/boolean transforms, slug generation, boolean policy defaults, and `customTransform(...)`.
+- Documented the generic boot dispatcher and rewrite-builder patterns so hosts can keep only handler implementations, target readiness checks, and host-specific transforms.
+
 ## 0.6.0
 
 - Added package-owned runtime boot helper builders for reusable boot fix declarations, status reset actions, default field actions, truthy policy conditions, follow-up queues, and boot option merging.

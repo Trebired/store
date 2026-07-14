@@ -47,9 +47,11 @@
     "#8pewakkhamie": "./src/entity/registry.ts",
     "#a5xqu1rq2q04": "./src/runtime/provider-subentity.ts",
     "#a8a6v712yhzg": "./examples/basic.ts",
+    "#aayjwnodxnar": "./src/runtime/boot/followups.ts",
     "#b4e4gjc7njzb": "./src/core/read.ts",
     "#b9rnmvf9p9z3": "./src/storage/postgres/jsonb.ts",
     "#bo18xc6n4smu": "./src/subentity/read.ts",
+    "#by12tg0dnbxs": "./src/runtime/boot/helpers.ts",
     "#d3q3qxptfbbt": "./scripts/verify-pack.mjs",
     "#g06v32kod8xy": "./src/core/store.ts",
     "#g8u7bg42czn8": "./src/request/context.ts",
@@ -62,6 +64,7 @@
     "#nlliejgv8p5m": "./tb.code-discipline.ts",
     "#oz5habwl5021": "./src/cache/cache.ts",
     "#pq1c0xwc48qu": "./src/runtime/types.ts",
+    "#pxavar91qrj2": "./src/runtime/boot/rewriter.ts",
     "#qcbwdtdi8gun": "./src/runtime/postgres-safety.ts",
     "#r05cko7a02f8": "./src/core/private.ts",
     "#rc6d5lmoaws9": "./examples/postgres.ts",
@@ -72,8 +75,7 @@
     "#wwir6gmfebbh": "./src/runtime/hydration.ts",
     "#xwy7fgl52hsw": "./src/core/validation.ts",
     "#y31thwq3bdf0": "./src/types.ts",
-    "#zeealawo10hg": "./src/storage/postgres/validation.ts",
-    "#bootHelpers": "./src/runtime/boot-helpers.ts"
+    "#zeealawo10hg": "./src/storage/postgres/validation.ts"
   },
   "keywords": [
     "store",
@@ -107,5 +109,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.6.0"
+  "version": "0.7.0"
 }

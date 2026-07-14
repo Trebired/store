@@ -16,7 +16,32 @@ export {
   bootUnset,
   defineBootFix,
   mergeBootOptions,
-} from "./runtime/boot-helpers.js";
+} from "./runtime/boot/helpers.js";
+export {
+  bootFollowUpFailed,
+  bootFollowUpSkipped,
+  bootFollowUpSucceeded,
+  createBootFollowUpDispatcher,
+  readBootBoolean,
+} from "./runtime/boot/followups.js";
+export {
+  arrayField,
+  booleanField,
+  booleanPolicyDefaults,
+  bootRecord,
+  copyAlias,
+  createBootRewriter,
+  customTransform,
+  defaultStatus,
+  defaultValue,
+  nestedDefaults,
+  numberField,
+  objectField,
+  slugField,
+  stringAliases,
+  stringField,
+  uniqueStringArrayField,
+} from "./runtime/boot/rewriter.js";
 export { createRedisMemoAdapter } from "./runtime/memo.js";
 export {
   defineEntityRegistry,
@@ -120,6 +145,7 @@ export type {
   RuntimeBootCondition,
   RuntimeBootEntityResult,
   RuntimeBootFailure,
+  RuntimeBootFollowUpOutcome,
   RuntimeBootFix,
   RuntimeBootResult,
   RuntimeBootSkipped,
@@ -168,3 +194,25 @@ export type {
   StoreRuntimePostgresPoolOptions,
   StoreRuntimeWriteEvent,
 } from "./runtime/types.js";
+
+export type {
+  BootFollowUpDispatcherOptions,
+  BootFollowUpDispatcherRegistry,
+  BootFollowUpFunction,
+  BootFollowUpGuard,
+  BootFollowUpHandler,
+  BootFollowUpHandlerApi,
+  BootFollowUpHandlerConfig,
+  BootFollowUpHandlerInput,
+  BootFollowUpOutcomeDetails,
+} from "./runtime/boot/followups.js";
+
+export type {
+  BootArrayFieldOptions,
+  BootBooleanFieldOptions,
+  BootNumberFieldOptions,
+  BootObjectFieldOptions,
+  BootRecordTransform,
+  BootSlugFieldOptions,
+  BootStringFieldOptions,
+} from "./runtime/boot/rewriter.js";

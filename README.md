@@ -324,9 +324,9 @@ Runtime Postgres:
 - creates the schema, JSONB entity tables, default GIN indexes, extra expression indexes, and safe migration hooks
 - wires the package PostgreSQL JSONB adapter internally
 
-Runtime registry normalization supports concise app-owned entity definitions. `required` becomes `context`, `private` becomes `privateFields`, and mode hooks such as `"with-profile": true` load hook name `"profile"`. Unknown fields can be preserved as opaque metadata, but the package does not interpret display or presentation metadata.
+Runtime registry normalization supports concise host-owned entity definitions. `required` becomes `context`, `private` becomes `privateFields`, and mode hooks such as `"with-profile": true` load hook name `"profile"`. Unknown fields can be preserved as opaque metadata, but the package does not interpret display or presentation metadata.
 
-Runtime boot reconciliation supports generic `fixes` with `if`, `if_all`, nested field paths, `equals`, `equals_any`, `gt`, `set`, `set_if_missing`, `unset`, `rewrite`, `after`, `run_after_on_match`, `skip_in_developer_mode`, and `skip_in_split_dev`. Boot values can resolve from context with `{ ctx: "now_iso" }`. The package queues and runs app-owned follow-up callbacks, but does not know what those callbacks do.
+Runtime boot reconciliation supports generic `fixes` with `if`, `if_all`, nested field paths, `equals`, `equals_any`, `gt`, `set`, `set_if_missing`, `unset`, `rewrite`, `after`, `run_after_on_match`, `skip_in_developer_mode`, and `skip_in_split_dev`. Boot values can resolve from context with `{ ctx: "now_iso" }`. The package queues and runs host-owned follow-up callbacks, records structured outcomes in `RuntimeBootResult.followUps`, and leaves the callback behavior outside the package.
 
 For host code that has many boot rules, the package exports reusable boot builders:
 
@@ -343,13 +343,13 @@ import {
 
 const boot = mergeBootOptions({
   fixes: [
-    defineBootFix("jobs", [
+    defineBootFix("items", [
       bootRewrite(),
       bootSetIfMissing({ owner: "system" }),
       bootResetStatus(["running", "starting"], "stopped", {
         unset: ["runtime.pid"],
       }),
-      bootFollowUpWhen("jobs.start", [
+      bootFollowUpWhen("items.ensure", [
         { field: "status", equals: "stopped" },
         bootTruthyCondition("runtime.policy.auto_start"),
       ]),
@@ -357,6 +357,111 @@ const boot = mergeBootOptions({
   ],
 });
 ```
+
+Boot follow-up dispatching can also be package-owned while handlers remain host-owned:
+
+```ts
+import {
+  createBootFollowUpDispatcher,
+  readBootBoolean,
+} from "@trebired/store";
+
+const followUps = createBootFollowUpDispatcher({
+  logger: console,
+  group: "store.boot",
+  guards: {
+    readyTarget: {
+      timeoutMs: 30_000,
+      pollMs: 250,
+      async resolveTarget({ record }) {
+        return typeof record.target_id === "string" ? record.target_id : "";
+      },
+      async isReady(targetId) {
+        return checkTargetReady(targetId);
+      },
+      onWaitMessage: "Waiting for boot follow-up target.",
+      onReadyMessage: "Boot follow-up target became ready.",
+      onTimeoutMessage: "Boot follow-up target did not become ready in time.",
+    },
+  },
+  handlers: {
+    "items.ensure": {
+      guard: "readyTarget",
+      policy: {
+        field: "runtime.policy.ensure_on_boot",
+        fallback: false,
+      },
+      async run({ call, entity, record, config, api }) {
+        await ensureRecord(record, config);
+        return api.succeeded({ call, entity });
+      },
+    },
+    "items.audit": async ({ record, api }) => {
+      if (!readBootBoolean(record, "runtime.policy.audit_on_boot")) {
+        return api.skipped();
+      }
+      return auditRecord(record);
+    },
+  },
+});
+
+const boot = {
+  fixes: [
+    defineBootFix("items", [
+      bootFollowUpWhen("items.ensure", {
+        field: "status",
+        equals: "ready",
+      }),
+    ]),
+  ],
+  followUps,
+};
+```
+
+The dispatcher owns call lookup, unknown-call skipped outcomes, exception handling, optional boolean policy checks, readiness polling, generic log metadata, and structured success/failure/skipped envelopes. `followUpCount` is the number of queued follow-ups; `followUpsRunCount` is the number of non-skipped outcomes.
+
+Boot rewrite builders remove repeated normalization boilerplate:
+
+```ts
+import {
+  bootRecord,
+  booleanPolicyDefaults,
+  createBootRewriter,
+  customTransform,
+  defaultStatus,
+  objectField,
+  stringAliases,
+  stringField,
+  uniqueStringArrayField,
+} from "@trebired/store";
+
+const normalize = createBootRewriter({
+  items: bootRecord([
+    stringField("name", {
+      fallbackFrom: "id",
+      prefix: "#",
+    }),
+    objectField("metadata"),
+    stringAliases("created_at", ["createdAt", "recorded_at"]),
+    stringAliases("created_by", ["createdBy"]),
+    uniqueStringArrayField("tags", ["tagIds"]),
+    defaultStatus("stopped"),
+    booleanPolicyDefaults("runtime.policy", {
+      ensure_on_boot: true,
+      retry_on_failure: true,
+    }),
+    customTransform((record) => hostNormalize(record)),
+  ]),
+});
+
+const boot = {
+  rewrites: {
+    normalize,
+  },
+};
+```
+
+Transforms preserve unknown fields, return a new object, support nested dot paths, normalize aliases/defaults/arrays/objects, and allow host-specific normalization through `customTransform(...)`.
 
 Runtime memo exposes:
 

@@ -53,6 +53,9 @@
       "#a8a6v712yhzg": [
         "./examples/basic.ts"
       ],
+      "#aayjwnodxnar": [
+        "./src/runtime/boot/followups.ts"
+      ],
       "#b4e4gjc7njzb": [
         "./src/core/read.ts"
       ],
@@ -61,6 +64,9 @@
       ],
       "#bo18xc6n4smu": [
         "./src/subentity/read.ts"
+      ],
+      "#by12tg0dnbxs": [
+        "./src/runtime/boot/helpers.ts"
       ],
       "#d3q3qxptfbbt": [
         "./scripts/verify-pack.mjs"
@@ -95,6 +101,9 @@
       "#pq1c0xwc48qu": [
         "./src/runtime/types.ts"
       ],
+      "#pxavar91qrj2": [
+        "./src/runtime/boot/rewriter.ts"
+      ],
       "#qcbwdtdi8gun": [
         "./src/runtime/postgres-safety.ts"
       ],
@@ -127,9 +136,6 @@
       ],
       "#zeealawo10hg": [
         "./src/storage/postgres/validation.ts"
-      ],
-      "#bootHelpers": [
-        "./src/runtime/boot-helpers.ts"
       ]
     },
     "strict": true,

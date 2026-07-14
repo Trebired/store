@@ -5,7 +5,7 @@ import type {
   RuntimeFollowUpConfig,
   RuntimeRewriteRegistry,
   StoreRuntimeBootOptions,
-} from "./types.js";
+} from "#pq1c0xwc48qu";
 import type { StoreContext, StoreWhere } from "#y31thwq3bdf0";
 
 const DEFAULT_TRUTHY_VALUES = Object.freeze(["true", "1", "yes", "on"]);
