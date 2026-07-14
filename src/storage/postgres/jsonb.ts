@@ -25,7 +25,7 @@ function createPostgresJsonbStorageAdapter(options: PostgresJsonbAdapterOptions)
     },
     byIds: (entity, ids, context, readOptions) => queryMany(options, schema, entity, { id: ids }, context, readOptions),
     count: async (entity, context, readOptions) => {
-      const sql = buildSelectSql(schema, entity, {}, context, readOptions, "count(*)::int as count");
+      const sql = buildSelectSql(schema, entity, {}, context, readOptions, "count(*)::int as count", undefined, false);
       const result = await options.client.query<{ count: number }>(sql.text, sql.params);
       return Number(result.rows[0]?.count || 0);
     },
@@ -43,22 +43,68 @@ function createPostgresJsonbStorageAdapter(options: PostgresJsonbAdapterOptions)
       const result = await options.client.query<Row>(sql, [stored.id, JSON.stringify(stored)]);
       return normalizeRow(result.rows[0]);
     },
-    remove: async (entity, context, id, readOptions) => {
-      const table = qualifiedTable(schema, entity);
-      const where = buildWhere(entity, {
-        id,
-      }, context, readOptions);
-      const sql = `delete from ${table} ${where.sql} returning id`;
-      assertPlaceholders(sql, where.params);
-      const result = await options.client.query(sql, where.params);
-      return result.rows.length > 0;
-    },
-    ensureReadyFor: async (entity) => {
-      const table = qualifiedTable(schema, entity);
-      const sql = `create table if not exists ${table} (id text primary key, record jsonb not null)`;
-      await options.client.query(sql, []);
-    },
+    remove: (entity, context, id, readOptions) => removeOne(options, schema, entity, context, id, readOptions),
+    removeMany: (entity, context, ids, readOptions) => removeMany(options, schema, entity, context, ids, readOptions),
+    ensureReadyFor: (entity) => ensureReadyFor(options, schema, entity),
   };
+}
+
+async function removeOne(
+  options: PostgresJsonbAdapterOptions,
+  schema: string,
+  entity: ResolvedEntity,
+  context: StoreContext,
+  id: string,
+  readOptions?: StorageReadOptions,
+): Promise<boolean> {
+  const result = await deleteRows(options, schema, entity, context, {
+    id,
+  }, readOptions);
+  return result.rows.length > 0;
+}
+
+async function removeMany(
+  options: PostgresJsonbAdapterOptions,
+  schema: string,
+  entity: ResolvedEntity,
+  context: StoreContext,
+  ids: string[],
+  readOptions?: StorageReadOptions,
+) {
+  const result = await deleteRows(options, schema, entity, context, {
+    id: ids,
+  }, readOptions);
+  return {
+    ids,
+    missing: ids.length - result.rows.length,
+    removed: result.rows.length,
+    requested: ids.length,
+  };
+}
+
+async function deleteRows(
+  options: PostgresJsonbAdapterOptions,
+  schema: string,
+  entity: ResolvedEntity,
+  context: StoreContext,
+  whereInput: StoreWhere,
+  readOptions?: StorageReadOptions,
+) {
+  const table = qualifiedTable(schema, entity);
+  const where = buildWhere(entity, whereInput, context, readOptions);
+  const sql = `delete from ${table} ${where.sql} returning id`;
+  assertPlaceholders(sql, where.params);
+  return options.client.query<{ id: string }>(sql, where.params);
+}
+
+async function ensureReadyFor(
+  options: PostgresJsonbAdapterOptions,
+  schema: string,
+  entity: ResolvedEntity,
+): Promise<void> {
+  const table = qualifiedTable(schema, entity);
+  const sql = `create table if not exists ${table} (id text primary key, record jsonb not null)`;
+  await options.client.query(sql, []);
 }
 
 function validateSchema(schemaInput?: string): string {
@@ -79,13 +125,17 @@ function buildSelectSql(
   options: StorageReadOptions | undefined,
   select = "id, record",
   limit?: number,
+  includeSort = true,
 ): {
   params: unknown[];
   text: string;
 } {
   const table = qualifiedTable(schema, entity);
   const clause = buildWhere(entity, where, context, options);
-  const text = `select ${select} from ${table} ${clause.sql}${limit ? ` limit ${limit}` : ""}`;
+  const order = includeSort ? buildOrderBy(options?.sort || []) : "";
+  const bounded = normalizeLimit(limit ?? options?.limit);
+  const limitClause = bounded === null ? "" : ` limit ${bounded}`;
+  const text = `select ${select} from ${table} ${clause.sql}${order}${limitClause}`;
   assertPlaceholders(text, clause.params);
   return {
     params: clause.params,
@@ -105,6 +155,39 @@ async function queryMany(
   const sql = buildSelectSql(schema, entity, where, context, readOptions, "id, record", limit);
   const result = await options.client.query<Row>(sql.text, sql.params);
   return result.rows.map(normalizeRow);
+}
+
+function buildOrderBy(sort: readonly string[]): string {
+  if (sort.length === 0) {
+    return "";
+  }
+
+  const parts = sort.map((spec) => {
+    const [field, direction] = spec.split(":");
+    const err = validateSqlIdentifier(field || "");
+    if (err) {
+      throw new Error(err.message);
+    }
+    if (direction !== "asc" && direction !== "desc") {
+      throw new Error("PostgreSQL JSONB adapter sort direction must be asc or desc.");
+    }
+
+    return `record->>'${field}' ${direction}`;
+  });
+
+  return ` order by ${parts.join(", ")}`;
+}
+
+function normalizeLimit(limit: number | undefined): number | null {
+  if (limit === undefined) {
+    return null;
+  }
+
+  if (!Number.isInteger(limit) || limit < 0) {
+    throw new Error("PostgreSQL JSONB adapter limit must be a non-negative integer.");
+  }
+
+  return limit;
 }
 
 function buildWhere(

@@ -15,6 +15,8 @@ It owns:
 - enriched-record write protection
 - optional L1/L2 cache orchestration
 - request-scoped loaders with `AsyncLocalStorage`
+- discriminator-based record views over shared physical entities
+- bulk removal and generic orphan/duplicate repair helpers
 - generic sub-entity execution
 - stable result/error envelopes
 - optional Trebired logger-adapter integration
@@ -161,6 +163,11 @@ Entity writes:
 - `store.entity.write.put(entity, context, record, options?)`
 - `store.entity.write.by(entity, where, context, patch, options?)`
 - `store.entity.write.remove(entity, context, id, options?)`
+- `store.entity.write.removeMany(entity, ids, context?, options?)`
+
+Record views:
+
+- `store.records(entity, views)`
 
 Sub-entity reads:
 
@@ -205,6 +212,88 @@ Helpers:
 
 Resolution supports the canonical key, singular/plural forms, and explicit aliases.
 
+## Record Views
+
+Record views are discriminator-filtered helpers over one physical entity. They are useful when a host stores several generic row shapes in one table but does not want to rebuild local wrapper APIs.
+
+```ts
+const records = store.records("documents", {
+  item: {
+    kind: "item",
+    defaults: {
+      status: "open",
+    },
+    normalize: (row) => ({
+      ...row,
+      title: String(row.title || "Untitled"),
+    }),
+    sort: [
+      "priority:asc",
+      "recorded_at:desc",
+    ],
+  },
+  target: {
+    kind: "target",
+    uniqueBy: [
+      "item_id",
+      "server_id",
+    ],
+  },
+});
+```
+
+The default discriminator field is `kind`. Set `discriminatorField` on a view to use another field.
+
+View reads automatically add the discriminator to `where` and push `where`, `sort`, and `limit` into storage where the adapter supports it:
+
+```ts
+const openItems = await records.item.list({
+  context,
+  limit: 20,
+  where: {
+    status: "open",
+  },
+});
+
+const item = await records.item.byId("item_1", {
+  context,
+});
+```
+
+View writes apply defaults, run `normalize`, and enforce the discriminator before writing:
+
+```ts
+await records.item.put({
+  id: "item_1",
+  title: "Reusable state",
+}, {
+  context,
+});
+
+await records.item.patch({
+  id: "item_1",
+}, {
+  priority: 2,
+}, {
+  context,
+});
+```
+
+Unique upserts read by the configured unique fields, preserve an existing id when found, and write the normalized merged record:
+
+```ts
+await records.target.upsertUnique({
+  id: "target_1",
+  item_id: "item_1",
+  server_id: "server_1",
+  status: "current",
+}, {
+  context,
+});
+```
+
+Record views use the same entity write paths as the core API, so enriched-record safeguards remain mandatory.
+
 ## Storage Adapters
 
 Adapters implement:
@@ -216,6 +305,7 @@ Adapters implement:
 - `hasAny`
 - `put`
 - `remove`
+- optional `removeMany`
 - `ensureReadyFor`
 
 The package includes `createPostgresJsonbStorageAdapter(...)`.
@@ -227,7 +317,7 @@ id text primary key,
 record jsonb not null
 ```
 
-The adapter validates SQL identifiers and placeholder order, scopes reads by required context, applies required context on write, supports `scope: "all"` with optional `where`, supports `byIds`, and accepts an explicit client. It does not read environment files or host configuration.
+The adapter validates SQL identifiers and placeholder order, scopes reads by required context, applies required context on write, supports `scope: "all"` with optional `where`, supports `byIds`, supports `sort` and `limit`, supports native bulk delete, and accepts an explicit client. It does not read environment files or host configuration.
 
 ```ts
 import { Pool } from "pg";
@@ -373,6 +463,32 @@ Writes and removes clear request loaders and invalidate the affected entity cach
 ```ts
 store.cache.invalidateEntity("documents");
 ```
+
+## Repair Helpers
+
+The generic repair API cleans up relationships between record views without host-side SQL:
+
+```ts
+const summary = await store.repair.orphansAndDuplicates({
+  child: records.target,
+  parent: records.item,
+  childParentKey: "item_id",
+  uniqueBy: [
+    "item_id",
+    "server_id",
+  ],
+  keep: "freshest",
+  freshnessFields: [
+    "recorded_at",
+    "last_seen_at",
+    "applied_at",
+    "removed_at",
+  ],
+  context,
+});
+```
+
+It scans parent and child views in raw mode, finds children whose parent id is missing, finds duplicate children by `uniqueBy`, keeps the freshest duplicate, deletes invalid rows through `removeMany`, and returns counts for scanned, deleted, remaining, and skipped work.
 
 ## Request Context
 

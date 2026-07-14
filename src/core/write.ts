@@ -1,11 +1,14 @@
 import { clearRequestEntityLoaders } from "#g8u7bg42czn8";
 import type {
+  StoreBulkRemoveResult,
   StoreContext,
   StoreEntityWrite,
   StoreRecord,
   StoreResult,
   StoreWhere,
   StoreWriteOptions,
+  ResolvedEntity,
+  StorageAdapter,
 } from "#y31thwq3bdf0";
 import { assertWritableRecord } from "./enriched.js";
 import { ok, storageFail } from "./result.js";
@@ -25,6 +28,7 @@ function createEntityWrite(
     by: (entity, where, context, patch, options) => writeBy(runtime, readBy, entity, where, context, patch, options),
     put: (entity, context, record, options) => put(runtime, entity, context, record, options),
     remove: (entity, context, id, options) => remove(runtime, entity, context, id, options),
+    removeMany: (entity, ids, context, options) => removeMany(runtime, entity, ids, context || {}, options),
   };
 }
 
@@ -139,6 +143,49 @@ async function remove(
   }
 }
 
+async function removeMany(
+  runtime: StoreRuntime,
+  entityInput: string,
+  ids: string[],
+  context: StoreContext,
+  writeOptions: StoreWriteOptions = {},
+): Promise<StoreResult<StoreBulkRemoveResult>> {
+  const resolved = runtime.resolveEntity(entityInput);
+  if (!resolved.ok) {
+    return resolved.result as StoreResult<StoreBulkRemoveResult>;
+  }
+
+  const invalid = validateContext(resolved.value.name, resolved.value.definition, context, writeOptions.scope)
+    || validateIds(resolved.value.name, ids);
+  if (invalid) {
+    return invalid as StoreResult<StoreBulkRemoveResult>;
+  }
+
+  const storage = runtime.resolveStorageResult(resolved.value);
+  if (!storage.ok) {
+    return storage.result as StoreResult<StoreBulkRemoveResult>;
+  }
+
+  try {
+    const removed = await removeManyFromStorage(storage.value, resolved.value, context, ids, writeOptions);
+    invalidate(runtime, resolved.value.name);
+    runtime.logger?.info("store.write", "Store records bulk remove completed.", {
+      entity: resolved.value.name,
+      operation: "removeMany",
+      removed: removed.removed,
+      requested: removed.requested,
+    });
+    return ok(removed, "Store records bulk remove completed.");
+  } catch (error) {
+    runtime.logger?.error("store.write", "Store records bulk remove failed.", {
+      entity: resolved.value.name,
+      error,
+      operation: "removeMany",
+    });
+    return storageFail(error, resolved.value.name, resolved.value.definition.storage);
+  }
+}
+
 function validateWriteInput(
   entity: string,
   definition: Parameters<typeof validateContext>[1],
@@ -149,6 +196,43 @@ function validateWriteInput(
   return validateContext(entity, definition, context, writeOptions.scope)
     || validateRecord(entity, record)
     || assertWritableRecord(entity, record);
+}
+
+function validateIds(entity: string, ids: string[]) {
+  for (const id of ids) {
+    const invalid = validateId(entity, id);
+    if (invalid) {
+      return invalid;
+    }
+  }
+
+  return null;
+}
+
+async function removeManyFromStorage(
+  storage: StorageAdapter,
+  entity: ResolvedEntity,
+  context: StoreContext,
+  ids: string[],
+  options: StoreWriteOptions,
+): Promise<StoreBulkRemoveResult> {
+  if (storage.removeMany) {
+    return storage.removeMany(entity, context, ids, options);
+  }
+
+  let removed = 0;
+  for (const id of ids) {
+    if (await storage.remove(entity, context, id, options)) {
+      removed += 1;
+    }
+  }
+
+  return {
+    ids,
+    missing: ids.length - removed,
+    removed,
+    requested: ids.length,
+  };
 }
 
 function invalidate(runtime: StoreRuntime, entity: string): void {

@@ -39,6 +39,7 @@
     "#3rm4j57116nj": "./scripts/prepare-dist.mjs",
     "#3ug859kbex8c": "./src/logging.ts",
     "#44o0z05ifdgn": "./src/core/result.ts",
+    "#4f4sym6qlwt3": "./src/records/views.ts",
     "#613yyghfyv0a": "./src/core/enriched.ts",
     "#8pewakkhamie": "./src/entity/registry.ts",
     "#a8a6v712yhzg": "./examples/basic.ts",
@@ -50,6 +51,7 @@
     "#g8u7bg42czn8": "./src/request/context.ts",
     "#gpaizcbh8900": "./src/core/runtime.ts",
     "#index": "./src/index.ts",
+    "#jk4ufstswpvh": "./src/repair/orphans.ts",
     "#l51pnb6j0sxx": "./src/core/write.ts",
     "#mq84z0z7glm9": "./src/storage/memory.ts",
     "#nlliejgv8p5m": "./tb.code-discipline.ts",
@@ -95,5 +97,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

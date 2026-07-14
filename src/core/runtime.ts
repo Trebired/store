@@ -140,6 +140,8 @@ class StoreRuntime {
       bypassCache: options.cacheBypass,
       scope: options.scope,
       where: options.where,
+      limit: options.limit,
+      sort: options.sort,
     };
   }
 
@@ -206,7 +208,9 @@ function createReadKeyInput(input: unknown, readOptions: StoreReadOptions): Reco
   return {
     includePrivate: readOptions.includePrivate ?? false,
     input,
+    limit: readOptions.limit ?? null,
     scope: readOptions.scope || "context",
+    sort: readOptions.sort ?? null,
     where: readOptions.where ?? null,
   };
 }

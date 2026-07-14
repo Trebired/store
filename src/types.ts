@@ -20,6 +20,8 @@ export type StoreContext = Record<string, unknown>;
 export type StoreWhere = Record<string, unknown>;
 export type StoreMode = "raw" | "full" | (string & {});
 export type StorePrivateUnlocks = boolean | string[] | Record<string, boolean>;
+export type StoreSortDirection = "asc" | "desc";
+export type StoreSortSpec = `${string}:${StoreSortDirection}`;
 
 export type StoreErrorCode =
   | "store-cache-error"
@@ -84,6 +86,8 @@ export interface ResolvedEntity<TRecord extends StoreRecord = StoreRecord> {
 export interface StoreReadOptions {
   mode?: StoreMode;
   where?: StoreWhere;
+  limit?: number;
+  sort?: readonly StoreSortSpec[];
   includePrivate?: StorePrivateUnlocks;
   scope?: "context" | "all";
   cache?: boolean;
@@ -110,6 +114,8 @@ export interface StorageReadOptions {
   scope?: "context" | "all";
   bypassCache?: boolean;
   where?: StoreWhere;
+  limit?: number;
+  sort?: readonly StoreSortSpec[];
 }
 
 export interface StorageAdapter<TRecord extends StoreRecord = StoreRecord> {
@@ -120,6 +126,7 @@ export interface StorageAdapter<TRecord extends StoreRecord = StoreRecord> {
   hasAny(entity: ResolvedEntity<TRecord>, context: StoreContext, options?: StorageReadOptions): Promise<boolean>;
   put(entity: ResolvedEntity<TRecord>, context: StoreContext, record: TRecord, options?: StoreWriteOptions): Promise<TRecord>;
   remove(entity: ResolvedEntity<TRecord>, context: StoreContext, id: string, options?: StoreWriteOptions): Promise<boolean>;
+  removeMany?(entity: ResolvedEntity<TRecord>, context: StoreContext, ids: string[], options?: StoreWriteOptions): Promise<StoreBulkRemoveResult>;
   ensureReadyFor?(entity: ResolvedEntity<TRecord>): Promise<void>;
 }
 
@@ -218,6 +225,12 @@ export interface StoreEntityWrite {
     options?: StoreWriteOptions,
   ): Promise<StoreResult<StoreRecord | null>>;
   remove(entity: string, context: StoreContext, id: string, options?: StoreWriteOptions): Promise<StoreResult<boolean>>;
+  removeMany(
+    entity: string,
+    ids: string[],
+    context?: StoreContext,
+    options?: StoreWriteOptions,
+  ): Promise<StoreResult<StoreBulkRemoveResult>>;
 }
 
 export interface Store {
@@ -226,6 +239,8 @@ export interface Store {
     write: StoreEntityWrite;
   };
   cache: StoreCacheController;
+  records<TViews extends RecordViewConfigMap>(entity: string, views: TViews): RecordViewRegistry<TViews>;
+  repair: StoreRepairApi;
   subEntity: StoreSubEntityRead;
   inspectCache(): StoreCacheState;
 }
@@ -241,6 +256,86 @@ export interface StoreCacheState {
   l1Size: number;
   trackedKeys: Record<string, number>;
   inflight: number;
+}
+
+export interface StoreBulkRemoveResult {
+  requested: number;
+  removed: number;
+  missing: number;
+  ids: string[];
+}
+
+export type RecordViewDefaults =
+  | Partial<StoreRecord>
+  | ((patch?: Partial<StoreRecord>) => Partial<StoreRecord>);
+
+export interface RecordViewConfig {
+  kind: string;
+  discriminatorField?: string;
+  defaults?: RecordViewDefaults;
+  normalize?(row: StoreRecord): StoreRecord;
+  sort?: readonly StoreSortSpec[];
+  uniqueBy?: readonly string[];
+}
+
+export type RecordViewConfigMap = Record<string, RecordViewConfig>;
+
+export interface RecordViewOptions extends StoreReadOptions {
+  context?: StoreContext;
+}
+
+export interface RecordViewWriteOptions extends StoreWriteOptions {
+  context?: StoreContext;
+}
+
+export interface RecordViewListOptions extends RecordViewOptions {
+  limit?: number;
+  sort?: readonly StoreSortSpec[];
+}
+
+export interface RecordViewUniqueUpsertOptions extends RecordViewWriteOptions {}
+
+export interface RecordView<TRecord extends StoreRecord = StoreRecord> {
+  entity: string;
+  config: RecordViewConfig;
+  is(row: StoreRecord): boolean;
+  create(patch?: Partial<TRecord>): TRecord;
+  normalize(row: Partial<TRecord> | TRecord): TRecord;
+  byId(id: string, options?: RecordViewOptions): Promise<StoreResult<TRecord | null>>;
+  by(where: StoreWhere, options?: RecordViewOptions): Promise<StoreResult<TRecord | null>>;
+  list(options?: RecordViewListOptions): Promise<StoreResult<TRecord[]>>;
+  put(row: TRecord, options?: RecordViewWriteOptions): Promise<StoreResult<TRecord>>;
+  patch(where: StoreWhere, patch: Partial<TRecord>, options?: RecordViewWriteOptions): Promise<StoreResult<StoreRecord | null>>;
+  remove(id: string, options?: RecordViewWriteOptions): Promise<StoreResult<boolean>>;
+  upsertUnique(row: TRecord, options?: RecordViewUniqueUpsertOptions): Promise<StoreResult<TRecord>>;
+}
+
+export type RecordViewRegistry<TViews extends RecordViewConfigMap = RecordViewConfigMap> = {
+  [K in keyof TViews]: RecordView;
+};
+
+export interface StoreRepairApi {
+  orphansAndDuplicates(input: StoreRepairOrphansAndDuplicatesInput): Promise<StoreRepairSummary>;
+}
+
+export interface StoreRepairOrphansAndDuplicatesInput {
+  child: RecordView;
+  parent: RecordView;
+  childParentKey: string;
+  uniqueBy: readonly string[];
+  keep: "freshest";
+  freshnessFields: readonly string[];
+  context?: StoreContext;
+}
+
+export interface StoreRepairSummary {
+  scannedParentCount: number;
+  scannedChildCount: number;
+  deletedOrphanCount: number;
+  deletedDuplicateCount: number;
+  deletedTotal: number;
+  remainingChildCount: number;
+  skipped: boolean;
 }
 
 export interface SubEntityDefinition {

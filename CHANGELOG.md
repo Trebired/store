@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- Added generic record views with discriminator-scoped reads, normalized writes, default values, sort/limit read options, unique upsert, and enforced enriched-record safeguards.
+- Added `store.entity.write.removeMany(...)` with storage-native bulk delete support and safe per-id fallback behavior.
+- Added generic orphan and duplicate repair helpers for parent/child record views, including freshest duplicate selection and bulk deletion summaries.
+- Expanded memory and PostgreSQL JSONB adapters to support sorted and limited reads, plus native PostgreSQL bulk removal.
+- Updated documentation and examples for record views, raw versus enriched reads, unique upsert, bulk removal, and generic repair flows.
+
 ## 0.2.0
 
 - Added first-class `where` support for `read.all`, `read.count`, and `read.hasAny`, with cache keys, validation, memory storage, and PostgreSQL JSONB storage all using the same criteria semantics.

@@ -86,6 +86,46 @@ await store.entity.write.put("documents", context, {
   token: "secret",
 });
 
+const records = store.records("documents", {
+  item: {
+    defaults: {
+      status: "draft",
+    },
+    kind: "item",
+    normalize: (row) => ({
+      ...row,
+      title: String(row.title || "Untitled"),
+    }),
+    sort: [
+      "priority:asc",
+      "recorded_at:desc",
+    ],
+  },
+  target: {
+    kind: "target",
+    uniqueBy: [
+      "item_id",
+      "server_id",
+    ],
+  },
+});
+
+await records.item.put({
+  id: "item_1",
+  priority: 1,
+  title: "Record view row",
+}, {
+  context,
+});
+
+await records.target.upsertUnique({
+  id: "target_1",
+  item_id: "item_1",
+  server_id: "server_1",
+}, {
+  context,
+});
+
 const document = await store.entity.read.by("document", {
   id: "doc_1",
 }, context, {
@@ -102,4 +142,28 @@ const comments = await store.subEntity.list("comments", {
   id: "doc_1",
 }, context);
 
-console.log(document.data, activeDocuments.data, comments.data);
+const openItems = await records.item.list({
+  context,
+  limit: 10,
+  mode: "raw",
+  where: {
+    status: "draft",
+  },
+});
+
+const repair = await store.repair.orphansAndDuplicates({
+  child: records.target,
+  childParentKey: "item_id",
+  context,
+  freshnessFields: [
+    "recorded_at",
+  ],
+  keep: "freshest",
+  parent: records.item,
+  uniqueBy: [
+    "item_id",
+    "server_id",
+  ],
+});
+
+console.log(document.data, activeDocuments.data, comments.data, openItems.data, repair);

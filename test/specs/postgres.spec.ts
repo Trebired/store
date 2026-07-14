@@ -163,6 +163,51 @@ test("applies where filters to PostgreSQL count, hasAny, and byIds", async () =>
   ]);
 });
 
+test("applies PostgreSQL sort, limit, and native bulk remove", async () => {
+  const client = new CaptureClient();
+  const adapter = createPostgresJsonbStorageAdapter({
+    client,
+  });
+  const entity = {
+    definition: entities.libraries,
+    name: "libraries",
+  };
+
+  await adapter.all(entity, {
+    tenantId: "tenant_a",
+  }, {
+    limit: 2,
+    sort: [
+      "priority:asc",
+      "recorded_at:desc",
+    ],
+    where: {
+      status: "active",
+    },
+  });
+  await adapter.removeMany?.(entity, {
+    tenantId: "tenant_a",
+  }, [
+    "lib_1",
+    "lib_2",
+  ]);
+
+  expect(client.queries[0]?.sql).toContain("order by record->>'priority' asc, record->>'recorded_at' desc");
+  expect(client.queries[0]?.sql).toContain("limit 2");
+  expect(client.queries[1]?.sql).toContain("delete from \"public\".\"libraries\"");
+  expect(client.queries[1]?.sql).toContain("record->>'id' = any($1::text[])");
+  expect(client.queries[1]?.sql).toContain("record @> $2::jsonb");
+  expect(client.queries[1]?.params).toEqual([
+    [
+      "lib_1",
+      "lib_2",
+    ],
+    JSON.stringify({
+      tenantId: "tenant_a",
+    }),
+  ]);
+});
+
 class CaptureClient implements PostgresStoreClient {
   readonly queries: Array<{
     params: unknown[];

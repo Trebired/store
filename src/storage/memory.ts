@@ -19,8 +19,13 @@ function createMemoryStorageAdapter(seed: Record<string, StoreRecord[]> = {}): S
       return filterRows([...table(records, entity.name).values()], entity, context, options).map(clone);
     },
     async by(entity, where, context, options) {
-      return filterRows([...table(records, entity.name).values()], entity, context, options)
-        .find((row) => matchesWhere(row, where)) ?? null;
+      return filterRows([...table(records, entity.name).values()], entity, context, {
+        ...options,
+        where: {
+          ...(options?.where || {}),
+          ...where,
+        },
+      })[0] ?? null;
     },
     async byIds(entity, ids, context, options) {
       return filterRows(ids.map((id) => table(records, entity.name).get(id)).filter(Boolean) as StoreRecord[], entity, context, options)
@@ -43,6 +48,27 @@ function createMemoryStorageAdapter(seed: Record<string, StoreRecord[]> = {}): S
     async remove(entity, _context, id) {
       return table(records, entity.name).delete(id);
     },
+    removeMany: async (entity, _context, ids) => removeManyRows(records, entity.name, ids),
+  };
+}
+
+function removeManyRows(
+  records: Map<string, Map<string, StoreRecord>>,
+  entity: string,
+  ids: string[],
+) {
+  let removed = 0;
+  for (const id of ids) {
+    if (table(records, entity).delete(id)) {
+      removed += 1;
+    }
+  }
+
+  return {
+    ids,
+    missing: ids.length - removed,
+    removed,
+    requested: ids.length,
   };
 }
 
@@ -63,7 +89,9 @@ function filterRows(
   context: StoreContext,
   options?: StorageReadOptions,
 ): StoreRecord[] {
-  return rows.filter((row) => matchesScope(row, entity, context, options) && matchesWhere(row, options?.where || {}));
+  const filtered = rows.filter((row) => matchesScope(row, entity, context, options) && matchesWhere(row, options?.where || {}));
+  const sorted = sortRows(filtered, options?.sort || []);
+  return typeof options?.limit === "number" ? sorted.slice(0, Math.max(0, options.limit)) : sorted;
 }
 
 function matchesWhere(row: StoreRecord, where: StoreWhere): boolean {
@@ -97,6 +125,44 @@ function matchesValue(actual: unknown, expected: unknown): boolean {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function sortRows(rows: StoreRecord[], sort: readonly string[]): StoreRecord[] {
+  if (sort.length === 0) {
+    return rows;
+  }
+
+  return [...rows].sort((a, b) => compareRows(a, b, sort));
+}
+
+function compareRows(a: StoreRecord, b: StoreRecord, sort: readonly string[]): number {
+  for (const spec of sort) {
+    const [field, direction] = spec.split(":");
+    const comparison = compareValues(a[field || ""], b[field || ""]);
+    if (comparison !== 0) {
+      return direction === "desc" ? -comparison : comparison;
+    }
+  }
+
+  return 0;
+}
+
+function compareValues(a: unknown, b: unknown): number {
+  if (a === b) {
+    return 0;
+  }
+
+  if (a === null || a === undefined) {
+    return 1;
+  }
+
+  if (b === null || b === undefined) {
+    return -1;
+  }
+
+  return String(a).localeCompare(String(b), undefined, {
+    numeric: true,
+  });
 }
 
 function clone<T extends StoreRecord>(record: T): T {
