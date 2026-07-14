@@ -12,6 +12,7 @@ import {
   resolveEntityName,
   runWithStoreRequestContext,
 } from "#index";
+import { StoreCache } from "#oz5habwl5021";
 import type { StoreRecord } from "#index";
 
 const entities = defineEntityRegistry({
@@ -56,6 +57,24 @@ function createFixtureStore(seed: StoreRecord[] = []) {
         parent: "libraries",
         sourceMode: "raw",
       },
+    },
+  });
+}
+
+function createUnscopedStore(seed: StoreRecord[] = []) {
+  const unscoped = defineEntityRegistry({
+    notes: {
+      storage: "memory",
+      table: "notes",
+    },
+  });
+  return createStore({
+    cache: true,
+    entities: unscoped,
+    storages: {
+      memory: createMemoryStorageAdapter({
+        notes: seed,
+      }),
     },
   });
 }
@@ -143,6 +162,120 @@ test("writes put, patch by where, remove, and applies required context", async (
   const removed = await store.entity.write.remove("libraries", context, "lib_1");
   expect(removed.data).toBe(true);
   expect((await store.entity.read.hasAny("libraries", context)).data).toBe(false);
+});
+
+test("normalizes null and undefined context to empty objects for unscoped reads and writes", async () => {
+  const store = createUnscopedStore();
+
+  expect((await store.entity.write.put("notes", null, {
+    id: "note_1",
+    title: "One",
+  })).ok).toBe(true);
+  expect((await store.entity.read.all("notes", null)).data?.map((row) => row.id)).toEqual(["note_1"]);
+  expect((await store.entity.read.by("notes", {
+    id: "note_1",
+  }, null)).data?.title).toBe("One");
+  expect((await store.entity.read.count("notes", undefined)).data).toBe(1);
+  expect((await store.entity.read.hasAny("notes", null)).data).toBe(true);
+
+  expect((await store.entity.write.by("notes", {
+    id: "note_1",
+  }, null, {
+    title: "Updated",
+  })).data?.title).toBe("Updated");
+  expect((await store.entity.write.put("notes", undefined, {
+    id: "note_2",
+    title: "Two",
+  })).ok).toBe(true);
+  expect((await store.entity.write.remove("notes", null, "note_2")).data).toBe(true);
+  expect((await store.entity.write.removeMany("notes", [
+    "note_1",
+  ], null)).data).toMatchObject({
+    removed: 1,
+    requested: 1,
+  });
+});
+
+test("returns invalid-context results for non-object contexts without storage failures", async () => {
+  const store = createUnscopedStore();
+  const invalidContexts = [
+    "tenant",
+    1,
+    true,
+    [],
+    new Date(),
+    () => ({}),
+  ];
+
+  for (const context of invalidContexts) {
+    const read = await store.entity.read.all("notes", context as never);
+    const write = await store.entity.write.put("notes", context as never, {
+      id: `note_${crypto.randomUUID()}`,
+    });
+    expect(read).toMatchObject({
+      error_code: "store-invalid-context",
+      ok: false,
+      status: 400,
+    });
+    expect(write).toMatchObject({
+      error_code: "store-invalid-context",
+      ok: false,
+      status: 400,
+    });
+    expect(read.error_code).not.toBe("store-storage-error");
+    expect(write.error_code).not.toBe("store-storage-error");
+  }
+
+  const invalid = [] as never;
+  const results = [
+    await store.entity.read.by("notes", {
+      id: "note_1",
+    }, invalid),
+    await store.entity.read.count("notes", invalid),
+    await store.entity.read.hasAny("notes", invalid),
+    await store.entity.write.by("notes", {
+      id: "note_1",
+    }, invalid, {
+      title: "Nope",
+    }),
+    await store.entity.write.remove("notes", invalid, "note_1"),
+    await store.entity.write.removeMany("notes", [
+      "note_1",
+    ], invalid),
+  ];
+  for (const result of results) {
+    expect(result).toMatchObject({
+      error_code: "store-invalid-context",
+      ok: false,
+      status: 400,
+    });
+  }
+});
+
+test("required context still fails after null context normalizes to empty object", async () => {
+  const store = createFixtureStore();
+  const read = await store.entity.read.all("libraries", null);
+  const write = await store.entity.write.put("libraries", undefined, {
+    id: "lib_1",
+  });
+
+  expect(read).toMatchObject({
+    error_code: "store-invalid-context",
+    ok: false,
+  });
+  expect(read.message).toContain("Missing required context key");
+  expect(write).toMatchObject({
+    error_code: "store-invalid-context",
+    ok: false,
+  });
+});
+
+test("store cache key creation is defensive for nullable and invalid contexts", () => {
+  const cache = new StoreCache(true);
+
+  expect(() => cache.createKey("notes", "all", {}, null, "raw")).not.toThrow();
+  expect(() => cache.createKey("notes", "all", {}, undefined, "raw")).not.toThrow();
+  expect(() => cache.createKey("notes", "all", {}, "bad", "raw")).not.toThrow();
 });
 
 test("rejects missing ids, invalid ids, and invalid where clauses", async () => {

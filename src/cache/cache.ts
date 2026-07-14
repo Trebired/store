@@ -56,7 +56,7 @@ class StoreCache {
     return this.versions.get(entity) || 0;
   }
 
-  createKey(entity: string, operation: string, input: unknown, context: StoreContext, mode: string): string {
+  createKey(entity: string, operation: string, input: unknown, context: unknown, mode: string): string {
     return stableStringify({
       context: this.filterContext(context),
       entity,
@@ -158,7 +158,11 @@ class StoreCache {
     };
   }
 
-  private filterContext(context: StoreContext): StoreContext {
+  private filterContext(context: unknown): StoreContext {
+    if (!context || typeof context !== "object" || Array.isArray(context)) {
+      return {};
+    }
+
     return Object.fromEntries(Object.entries(context).filter(([key]) => !this.ignoredKeys.has(key)));
   }
 

@@ -5,9 +5,23 @@ import type {
   StoreResult,
   StoreWhere,
 } from "#y31thwq3bdf0";
-import { fail } from "./result.js";
+import { fail, ok } from "./result.js";
 
 const VALID_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/u;
+
+function normalizeContext(entity: string, context: unknown): StoreResult<StoreContext> {
+  if (context === null || context === undefined) {
+    return ok({}, "Store context normalized.");
+  }
+
+  if (!isPlainObject(context)) {
+    return fail("store-invalid-context", "Store context must be an object.", {
+      entity,
+    });
+  }
+
+  return ok(context as StoreContext, "Store context normalized.");
+}
 
 function validateContext(
   entity: string,
@@ -91,8 +105,18 @@ function applyRequiredContext(record: StoreRecord, definition: EntityDefinition,
   return out;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
 export {
   applyRequiredContext,
+  normalizeContext,
   validateContext,
   validateId,
   validateOptionalWhere,

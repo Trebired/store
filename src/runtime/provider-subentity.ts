@@ -2,12 +2,14 @@ import { ok, fail } from "#44o0z05ifdgn";
 import type {
   Store,
   StoreContext,
+  StoreContextInput,
   StoreEntityRead,
   StoreReadOptions,
   StoreRecord,
   StoreResult,
   StoreWhere,
 } from "#y31thwq3bdf0";
+import { normalizeContext } from "#xwy7fgl52hsw";
 import type {
   RuntimeProviderSubEntityApi,
   RuntimeProviderSubEntityDefinition,
@@ -25,22 +27,22 @@ function wrapProviderSubEntities(
   return {
     all: (entity, context, options) => {
       const provider = providers[entity];
-      return provider ? readProviderAll(read, provider, context, options) : read.all(entity, context, options);
+      return provider ? readProviderAll(read, entity, provider, context, options) : read.all(entity, context, options);
     },
     by: (entity, where, context, options) => {
       const provider = providers[entity];
-      return provider ? readProviderBy(read, provider, where, context, options) : read.by(entity, where, context, options);
+      return provider ? readProviderBy(read, entity, provider, where, context, options) : read.by(entity, where, context, options);
     },
     count: (entity, context, options) => {
       const provider = providers[entity];
-      return provider ? readProviderCount(read, provider, context, options) : read.count(entity, context, options);
+      return provider ? readProviderCount(read, entity, provider, context, options) : read.count(entity, context, options);
     },
     hasAny: async (entity, context, options) => {
       const provider = providers[entity];
       if (!provider) {
         return read.hasAny(entity, context, options);
       }
-      const count = await readProviderCount(read, provider, context, options);
+      const count = await readProviderCount(read, entity, provider, context, options);
       return count.ok ? ok(Number(count.data) > 0, "Store virtual sub-entity read completed.") : count as StoreResult<boolean>;
     },
   };
@@ -48,11 +50,12 @@ function wrapProviderSubEntities(
 
 async function readProviderAll<TRecord extends StoreRecord>(
   read: StoreEntityRead,
+  entity: string,
   provider: RuntimeProviderSubEntityDefinition,
-  context: StoreContext,
+  context: StoreContextInput,
   options: StoreReadOptions = {},
 ): Promise<StoreResult<TRecord[]>> {
-  const valid = validateProviderContext(provider, context);
+  const valid = validateProviderContext(entity, provider, context);
   if (!valid.ok) {
     return valid.result as StoreResult<TRecord[]>;
   }
@@ -62,12 +65,13 @@ async function readProviderAll<TRecord extends StoreRecord>(
 
 async function readProviderBy<TRecord extends StoreRecord>(
   read: StoreEntityRead,
+  entity: string,
   provider: RuntimeProviderSubEntityDefinition,
   where: StoreWhere,
-  context: StoreContext,
+  context: StoreContextInput,
   options: StoreReadOptions = {},
 ): Promise<StoreResult<TRecord | null>> {
-  const valid = validateProviderContext(provider, context);
+  const valid = validateProviderContext(entity, provider, context);
   if (!valid.ok) {
     return valid.result as StoreResult<TRecord | null>;
   }
@@ -77,11 +81,12 @@ async function readProviderBy<TRecord extends StoreRecord>(
 
 async function readProviderCount(
   read: StoreEntityRead,
+  entity: string,
   provider: RuntimeProviderSubEntityDefinition,
-  context: StoreContext,
+  context: StoreContextInput,
   options: StoreReadOptions = {},
 ): Promise<StoreResult<number>> {
-  const valid = validateProviderContext(provider, context);
+  const valid = validateProviderContext(entity, provider, context);
   if (!valid.ok) {
     return valid.result as StoreResult<number>;
   }
@@ -90,8 +95,9 @@ async function readProviderCount(
 }
 
 function validateProviderContext(
+  entity: string,
   provider: RuntimeProviderSubEntityDefinition,
-  context: StoreContext,
+  context: StoreContextInput,
 ): {
   context: StoreContext;
   ok: true;
@@ -99,9 +105,17 @@ function validateProviderContext(
   ok: false;
   result: StoreResult<never>;
 } {
-  const validation = provider.validateContext?.(context);
+  const normalized = normalizeContext(entity, context);
+  if (!normalized.ok) {
+    return {
+      ok: false,
+      result: normalized as StoreResult<never>,
+    };
+  }
+  const contextValue = normalized.data || {};
+  const validation = provider.validateContext?.(contextValue);
   if (!validation || validation.ok === true) {
-    const ctx = validation && "ctx" in validation ? validation.ctx || context : context;
+    const ctx = validation && "ctx" in validation ? validation.ctx || contextValue : contextValue;
     return {
       context: ctx as StoreContext,
       ok: true,

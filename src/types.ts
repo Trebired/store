@@ -17,6 +17,7 @@ export type StoreLoggerAdapter = LoggerAdapterWriter;
 export type NormalizedStoreLogger = NormalizedLoggerAdapter;
 export type StoreRecord = { id: string } & Record<string, unknown>;
 export type StoreContext = Record<string, unknown>;
+export type StoreContextInput = StoreContext | null | undefined;
 export type StoreWhere = Record<string, unknown>;
 export type StoreMode = "raw" | "full" | (string & {});
 export type StorePrivateUnlocks = boolean | string[] | Record<string, boolean>;
@@ -195,38 +196,38 @@ export interface CreateStoreOptions<TRegistry extends EntityRegistry = EntityReg
 export interface StoreEntityRead {
   all<TRecord extends StoreRecord = StoreRecord>(
     entity: string,
-    context: StoreContext,
+    context: StoreContextInput,
     options?: StoreReadOptions,
   ): Promise<StoreResult<TRecord[]>>;
   by<TRecord extends StoreRecord = StoreRecord>(
     entity: string,
     where: StoreWhere,
-    context: StoreContext,
+    context: StoreContextInput,
     options?: StoreReadOptions,
   ): Promise<StoreResult<TRecord | null>>;
-  count(entity: string, context: StoreContext, options?: StoreReadOptions): Promise<StoreResult<number>>;
-  hasAny(entity: string, context: StoreContext, options?: StoreReadOptions): Promise<StoreResult<boolean>>;
+  count(entity: string, context: StoreContextInput, options?: StoreReadOptions): Promise<StoreResult<number>>;
+  hasAny(entity: string, context: StoreContextInput, options?: StoreReadOptions): Promise<StoreResult<boolean>>;
 }
 
 export interface StoreEntityWrite {
   put<TRecord extends StoreRecord = StoreRecord>(
     entity: string,
-    context: StoreContext,
+    context: StoreContextInput,
     record: TRecord,
     options?: StoreWriteOptions,
   ): Promise<StoreResult<TRecord>>;
   by<TPatch extends StoreWhere = StoreWhere>(
     entity: string,
     where: StoreWhere,
-    context: StoreContext,
+    context: StoreContextInput,
     patch: TPatch,
     options?: StoreWriteOptions,
   ): Promise<StoreResult<StoreRecord | null>>;
-  remove(entity: string, context: StoreContext, id: string, options?: StoreWriteOptions): Promise<StoreResult<boolean>>;
+  remove(entity: string, context: StoreContextInput, id: string, options?: StoreWriteOptions): Promise<StoreResult<boolean>>;
   removeMany(
     entity: string,
     ids: string[],
-    context?: StoreContext,
+    context?: StoreContextInput,
     options?: StoreWriteOptions,
   ): Promise<StoreResult<StoreBulkRemoveResult>>;
 }

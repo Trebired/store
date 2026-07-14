@@ -571,6 +571,8 @@ Entity reads:
 - `store.entity.read.count(entity, context, options?)`
 - `store.entity.read.hasAny(entity, context, options?)`
 
+`context` may be `null` or `undefined`; the package normalizes those values to `{}`. Non-object contexts such as arrays, dates, strings, numbers, booleans, and functions return `store-invalid-context` results. Entities with required context keys still fail required-context validation when the normalized context is missing those keys.
+
 `all`, `count`, and `hasAny` accept `options.where` with the same validation as `read.by(...)`:
 
 ```ts

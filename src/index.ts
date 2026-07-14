@@ -108,6 +108,7 @@ export type {
   StoreCacheController,
   StoreCacheState,
   StoreContext,
+  StoreContextInput,
   StoreEntityRead,
   StoreEntityWrite,
   StoreErrorCode,

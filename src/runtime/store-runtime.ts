@@ -11,6 +11,7 @@ import type {
   ModeEnricherRegistry,
   Store,
   StoreContext,
+  StoreContextInput,
   StoreRecord,
 } from "#y31thwq3bdf0";
 import { createBootRunner } from "./boot.js";
@@ -195,21 +196,21 @@ function wrapEntityEvents(
       by: async (name, where, context, patch, options) => {
         const result = await entity.write.by(name, where, context, patch, options);
         if (result.ok && result.data) {
-          await onWriteEvent(onWrite, canonicalName(name), context, result.data, "by");
+          await onWriteEvent(onWrite, canonicalName(name), eventContext(context), result.data, "by");
         }
         return result;
       },
       put: async (name, context, record, options) => {
         const result = await entity.write.put(name, context, record, options);
         if (result.ok && result.data) {
-          await onWriteEvent(onWrite, canonicalName(name), context, result.data, "put");
+          await onWriteEvent(onWrite, canonicalName(name), eventContext(context), result.data, "put");
         }
         return result;
       },
       remove: async (name, context, id, options) => {
         const result = await entity.write.remove(name, context, id, options);
         if (result.ok) {
-          await onWriteEvent(onWrite, canonicalName(name), context, {
+          await onWriteEvent(onWrite, canonicalName(name), eventContext(context), {
             id,
           }, "remove");
         }
@@ -218,7 +219,7 @@ function wrapEntityEvents(
       removeMany: async (name, ids, context, options) => {
         const result = await entity.write.removeMany(name, ids, context, options);
         if (result.ok) {
-          await onWriteEvent(onWrite, canonicalName(name), context || {}, {
+          await onWriteEvent(onWrite, canonicalName(name), eventContext(context), {
             id: ids.join(","),
             ids,
           }, "removeMany");
@@ -227,6 +228,13 @@ function wrapEntityEvents(
       },
     },
   };
+}
+
+function eventContext(context: StoreContextInput): StoreContext {
+  if (!context || typeof context !== "object" || Array.isArray(context)) {
+    return {};
+  }
+  return context;
 }
 
 async function onWriteEvent(

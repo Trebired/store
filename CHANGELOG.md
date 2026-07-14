@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1
+
+- Normalized `null` and `undefined` store contexts to `{}` across entity reads, writes, record views, provider-backed virtual sub-entities, and cache key creation.
+- Added clean `store-invalid-context` result failures for non-object contexts instead of leaking runtime `TypeError`s or misclassifying them as storage errors.
+- Kept required context validation and enriched-record safeguards unchanged, with regression coverage for both paths.
+
 ## 1.0.0
 
 - Added first-class SQLite support through `createSqliteJsonStorageAdapter(...)`, with JSON string records, scoped context filtering, `where` and `options.where`, `byIds`, `limit`, `sort`, `count`, `hasAny`, native `removeMany`, and strict identifier/path validation.
