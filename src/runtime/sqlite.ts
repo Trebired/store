@@ -40,7 +40,7 @@ function createRuntimeSqlite(
 function resolveDatabase(options: StoreRuntimeSqliteOptions, logger: NormalizedStoreLogger | null): SqliteDatabase {
   if (options.database) return options.database;
   if (options.path) {
-    logger?.info("store.sqlite", "SQLite database configured.", {
+    logger?.info("trebired.store.sqlite", "SQLite database configured.", {
       path: options.path,
     });
     return createLazyBunSqliteDatabase(options.path);
@@ -90,7 +90,7 @@ async function runQuery<T>(
     void config.metrics?.(metricEvent(Date.now() - started, options, true, result.rowCount));
     return envelopeSuccess(result.rows, result.rowCount, config);
   } catch (error) {
-    logger?.error("store.sqlite", "SQLite query failed.", {
+    logger?.error("trebired.store.sqlite", "SQLite query failed.", {
       caller,
       error,
       name: options?.name,
@@ -168,7 +168,7 @@ async function runInternal(
   message?: string,
 ): Promise<void> {
   await sqliteAll(client, sql, params);
-  if (message) logger?.info("store.sqlite", message, {});
+  if (message) logger?.info("trebired.store.sqlite", message, {});
 }
 
 function validateRuntimeSqliteQuery(
@@ -261,7 +261,7 @@ function logQuerySuccess(
 ): void {
   const slow = elapsedMs >= (config.slowQueryMs ?? DEFAULT_SLOW_QUERY_MS);
   if (!slow && !config.logOperations) return;
-  logger?.[slow ? "warn" : "info"]("store.sqlite", slow ? "SQLite slow query completed." : "SQLite query completed.", {
+  logger?.[slow ? "warn" : "info"]("trebired.store.sqlite", slow ? "SQLite slow query completed." : "SQLite query completed.", {
     caller,
     elapsedMs,
     name: options?.name,

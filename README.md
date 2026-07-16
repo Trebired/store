@@ -409,7 +409,7 @@ import {
 
 const followUps = createBootFollowUpDispatcher({
   logger: console,
-  group: "store.boot",
+  group: "trebired.store.boot",
   guards: {
     readyTarget: {
       timeoutMs: 30_000,

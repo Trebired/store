@@ -65,14 +65,14 @@ async function put<TRecord extends StoreRecord>(
     const stored = applyRequiredContext(record, resolved.value.definition, ctx) as TRecord;
     const out = await storage.value.put(resolved.value, ctx, stored, writeOptions);
     invalidate(runtime, resolved.value.name);
-    runtime.logger?.info("store.write", "Store record saved.", {
+    runtime.logger?.info("trebired.store.write", "Store record saved.", {
       entity: resolved.value.name,
       id: out.id,
       operation: "put",
     });
     return ok(out as TRecord, "Store record saved.");
   } catch (error) {
-    runtime.logger?.error("store.write", "Store record save failed.", {
+    runtime.logger?.error("trebired.store.write", "Store record save failed.", {
       entity: resolved.value.name,
       error,
       operation: "put",
@@ -137,7 +137,7 @@ async function remove(
   try {
     const removed = await storage.value.remove(resolved.value, ctx, id, writeOptions);
     invalidate(runtime, resolved.value.name);
-    runtime.logger?.info("store.write", "Store record remove completed.", {
+    runtime.logger?.info("trebired.store.write", "Store record remove completed.", {
       entity: resolved.value.name,
       id,
       operation: "remove",
@@ -145,7 +145,7 @@ async function remove(
     });
     return ok(removed, removed ? "Store record removed." : "Store record was already absent.");
   } catch (error) {
-    runtime.logger?.error("store.write", "Store record remove failed.", {
+    runtime.logger?.error("trebired.store.write", "Store record remove failed.", {
       entity: resolved.value.name,
       error,
       id,
@@ -186,7 +186,7 @@ async function removeMany(
   try {
     const removed = await removeManyFromStorage(storage.value, resolved.value, ctx, ids, writeOptions);
     invalidate(runtime, resolved.value.name);
-    runtime.logger?.info("store.write", "Store records bulk remove completed.", {
+    runtime.logger?.info("trebired.store.write", "Store records bulk remove completed.", {
       entity: resolved.value.name,
       operation: "removeMany",
       removed: removed.removed,
@@ -194,7 +194,7 @@ async function removeMany(
     });
     return ok(removed, "Store records bulk remove completed.");
   } catch (error) {
-    runtime.logger?.error("store.write", "Store records bulk remove failed.", {
+    runtime.logger?.error("trebired.store.write", "Store records bulk remove failed.", {
       entity: resolved.value.name,
       error,
       operation: "removeMany",

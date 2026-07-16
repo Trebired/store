@@ -32,7 +32,7 @@ class StoreRuntime {
     this.cache = new StoreCache(options.cache);
     this.logger = resolveLogger(options.logger, options.loggerAdapter);
     this.resolveStorage = createStorageResolver(options);
-    this.logger?.info("store.create", "Store created.", {
+    this.logger?.info("trebired.store.create", "Store created.", {
       cacheEnabled: this.cache.inspect().enabled,
       entities: Object.keys(options.entities),
     });
@@ -76,7 +76,7 @@ class StoreRuntime {
       const mode = readOptions.mode || "full";
       const key = this.cache.createKey(entity.name, operation, createReadKeyInput(input, readOptions), context, mode);
       const cached = await this.cache.read(entity.name, key, load, readOptions.cacheBypass || readOptions.cache === false);
-      this.logger?.info("store.read", "Store read completed.", {
+      this.logger?.info("trebired.store.read", "Store read completed.", {
         cache: cached.inspection,
         entity: entity.name,
         mode,
@@ -86,7 +86,7 @@ class StoreRuntime {
         cache: cached.inspection,
       } : undefined);
     } catch (error) {
-      this.logger?.error("store.read", "Store read failed.", {
+      this.logger?.error("trebired.store.read", "Store read failed.", {
         entity: entity.name,
         error,
         operation,
@@ -130,7 +130,7 @@ class StoreRuntime {
 
   invalidate(entity: string): void {
     this.cache.invalidateEntity(entity);
-    this.logger?.info("store.cache", "Store entity cache invalidated.", {
+    this.logger?.info("trebired.store.cache", "Store entity cache invalidated.", {
       entity,
     });
   }

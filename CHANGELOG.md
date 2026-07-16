@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+
+- Moved package-owned store logging under the `trebired.store` group root across runtime creation, reads, writes, cache invalidation, boot follow-ups, SQLite, and Postgres diagnostics.
+
 ## 1.0.1
 
 - Normalized `null` and `undefined` store contexts to `{}` across entity reads, writes, record views, provider-backed virtual sub-entities, and cache key creation.

@@ -69,7 +69,7 @@ function createPool(options: StoreRuntimePostgresOptions, logger: NormalizedStor
     max: options.pool?.max,
     statement_timeout: options.pool?.statementTimeoutMs,
   });
-  logger?.info("store.postgres", "Postgres pool created.", {
+    logger?.info("trebired.store.postgres", "Postgres pool created.", {
     databaseUrl: redactDatabaseUrl(options.databaseUrl),
     pool: options.pool || {},
   });
@@ -96,7 +96,7 @@ async function runQuery<T>(
     void config.metrics?.(metricEvent(Date.now() - started, options, true, rowCount(result)));
     return envelopeSuccess(result, config);
   } catch (error) {
-    logger?.error("store.postgres", "Postgres query failed.", {
+    logger?.error("trebired.store.postgres", "Postgres query failed.", {
       caller,
       error,
       name: options?.name,
@@ -221,7 +221,7 @@ async function runInternal(
 ): Promise<void> {
   await client.query(sql, [...params]);
   if (message) {
-    logger?.info("store.postgres", message, {});
+    logger?.info("trebired.store.postgres", message, {});
   }
 }
 
@@ -252,7 +252,7 @@ function logQuerySuccess(
     return;
   }
 
-  logger?.[slow ? "warn" : "info"]("store.postgres", slow ? "Postgres slow query completed." : "Postgres query completed.", {
+  logger?.[slow ? "warn" : "info"]("trebired.store.postgres", slow ? "Postgres slow query completed." : "Postgres query completed.", {
     caller,
     elapsedMs,
     name: options?.name,
@@ -273,7 +273,7 @@ function logPoolWait(
   if (elapsedMs < 100) {
     return;
   }
-  logger?.warn("store.postgres", "Postgres pool wait completed.", {
+  logger?.warn("trebired.store.postgres", "Postgres pool wait completed.", {
     caller,
     elapsedMs,
     idle: client.idleCount || 0,
@@ -316,7 +316,7 @@ function errorCode(error: unknown): string {
 
 function attachPoolErrorLogger(client: RuntimePostgresClient, logger: NormalizedStoreLogger | null): void {
   client.on?.("error", (error) => {
-    logger?.error("store.postgres", "Postgres pool error.", {
+    logger?.error("trebired.store.postgres", "Postgres pool error.", {
       error,
     });
   });

@@ -8,7 +8,7 @@ import type {
   StoreLoggerAdapter,
 } from "#y31thwq3bdf0";
 
-const STORE_LOG_GROUP = "@trebired/store";
+const STORE_LOG_GROUP = "trebired.store";
 
 function resolveLogger(
   logger?: StoreLogger,

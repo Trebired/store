@@ -45,10 +45,10 @@ test("emits generic logger-adapter events when a logger adapter is provided", as
   }, context);
   await store.entity.write.remove("libraries", context, "lib_1");
 
-  expect(events.map((event) => event.group)).toContain("store.create");
-  expect(events.map((event) => event.group)).toContain("store.write");
-  expect(events.map((event) => event.group)).toContain("store.read");
-  expect(events.map((event) => event.group)).toContain("store.cache");
+  expect(events.map((event) => event.group)).toContain("trebired.store.create");
+  expect(events.map((event) => event.group)).toContain("trebired.store.write");
+  expect(events.map((event) => event.group)).toContain("trebired.store.read");
+  expect(events.map((event) => event.group)).toContain("trebired.store.cache");
   expect(events.every((event) => event.level === "info")).toBe(true);
 });
 
