@@ -7,8 +7,8 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const tempRoot = path.join(rootDir, ".tmp", "verify-pack");
 const npmCacheDir = path.join(tempRoot, "npm-cache");
 const packageJsonBackupPath = path.join(rootDir, ".tmp", "package.json.backup");
-const resultDir = path.join(rootDir, "node_modules", "@trebired", "result");
-const loggerAdapterDir = path.join(rootDir, "node_modules", "@trebired", "logger-adapter");
+const resultDir = path.join(rootDir, "node_modules", "@package", "result");
+const loggerAdapterDir = path.join(rootDir, "node_modules", "@package", "logger-adapter");
 const nodeTypesDir = path.join(rootDir, "node_modules", "@types", "node");
 const tscBin = path.join(rootDir, "node_modules", "typescript", "bin", "tsc");
 
@@ -20,7 +20,7 @@ async function main() {
 
   validatePackedEntrypoints(packageJson, tarballEntries);
   validatePackedImports(packageJson, tarballEntries);
-  await runConsumerSmokeTest(tarballPath);
+  await runConsumerSmokeTest(tarballPath, packageJson.name);
   console.log("Pack verification succeeded.");
 }
 
@@ -106,16 +106,16 @@ function validatePackedImports(packageJson, tarballEntries) {
   }
 }
 
-async function runConsumerSmokeTest(tarballPath) {
+async function runConsumerSmokeTest(tarballPath, packageName) {
   const consumerDir = path.join(tempRoot, "consumer");
   await fs.mkdir(consumerDir, {
     recursive: true,
   });
   await fs.writeFile(path.join(consumerDir, "package.json"), JSON.stringify({
     dependencies: {
-      "@trebired/logger-adapter": `file:${loggerAdapterDir}`,
-      "@trebired/result": `file:${resultDir}`,
-      "@trebired/store": `file:${tarballPath}`,
+      "@package/logger-adapter": `file:${loggerAdapterDir}`,
+      "@package/result": `file:${resultDir}`,
+      [packageName]: `file:${tarballPath}`,
     },
     devDependencies: {
       "@types/node": `file:${nodeTypesDir}`,
@@ -125,7 +125,7 @@ async function runConsumerSmokeTest(tarballPath) {
     type: "module",
   }, null, 2));
   await fs.writeFile(path.join(consumerDir, "index.ts"), [
-    'import { createMemoryStorageAdapter, createStore, defineEntityRegistry } from "@trebired/store";',
+    `import { createMemoryStorageAdapter, createStore, defineEntityRegistry } from ${JSON.stringify(packageName)};`,
     "const entities = defineEntityRegistry({ things: { table: \"things\", storage: \"memory\" } });",
     "const store = createStore({ entities, storages: { memory: createMemoryStorageAdapter() } });",
     "console.log(Boolean(store));",
@@ -181,7 +181,6 @@ function restorePackageJsonFromBackup() {
       stdio: "ignore",
     });
   } catch {
-    // no backup was created
   }
 }
 

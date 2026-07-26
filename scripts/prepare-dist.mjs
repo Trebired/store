@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = path.join(rootDir, "dist");
 const packageJsonPath = path.join(rootDir, "package.json");
+const aliasMapDir = path.join(rootDir, ".code-discipline", "imports");
 const tempDir = path.join(rootDir, ".tmp");
 const backupPath = path.join(tempDir, "package.json.backup");
 const command = process.argv[2];
@@ -27,7 +28,7 @@ async function main() {
 }
 
 async function prepareDist() {
-  const packageJson = await readPackageJson();
+  const aliasMap = await readAliasMap();
   await fs.cp(path.join(distDir, "src"), distDir, {
     force: true,
     recursive: true,
@@ -36,7 +37,7 @@ async function prepareDist() {
 
   await Promise.all(files.map(async (filePath) => {
     const original = await fs.readFile(filePath, "utf8");
-    const rewritten = rewriteAliasImports(original, filePath, packageJson.imports || {});
+    const rewritten = rewriteAliasImports(original, filePath, aliasMap);
     if (rewritten !== original) {
       await fs.writeFile(filePath, rewritten);
     }
@@ -52,10 +53,7 @@ async function backupPackageJson() {
 
 async function writePublishedPackageJson() {
   const packageJson = await readPackageJson();
-  await fs.writeFile(packageJsonPath, `${JSON.stringify({
-    ...packageJson,
-    imports: createPublishedImports(packageJson.imports || {}),
-  }, null, 2)}\n`);
+  await fs.writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }
 
 async function restorePackageJson() {
@@ -68,6 +66,30 @@ async function restorePackageJson() {
 
 async function readPackageJson() {
   return JSON.parse(await fs.readFile(packageJsonPath, "utf8"));
+}
+
+async function readAliasMap() {
+  const aliases = {};
+
+  try {
+    const entries = await fs.readdir(aliasMapDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".json")) {
+        continue;
+      }
+
+      const raw = await fs.readFile(path.join(aliasMapDir, entry.name), "utf8");
+      Object.assign(aliases, JSON.parse(raw));
+    }
+  }
+  catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  return aliases;
 }
 
 async function collectDistFiles() {
@@ -102,17 +124,6 @@ function rewriteAliasImports(source, filePath, importsMap) {
 
     return `${quote}${toRelativeImport(path.relative(path.dirname(filePath), compiledPath))}${quote}`;
   });
-}
-
-function createPublishedImports(importsMap) {
-  return Object.fromEntries(Object.entries(importsMap)
-    .map(([alias, target]) => [alias, resolvePublishedImportTarget(String(target))])
-    .filter((entry) => Boolean(entry[1])));
-}
-
-function resolvePublishedImportTarget(target) {
-  const normalized = normalizePath(target);
-  return normalized.startsWith("src/") ? `./dist/${replaceSourceExtension(normalized.slice(4))}` : null;
 }
 
 function resolveCompiledTarget(target) {

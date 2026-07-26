@@ -1,6 +1,6 @@
 import {
   resolveLogger as resolveSharedLogger,
-} from "@trebired/logger-adapter";
+} from "@package/logger-adapter";
 
 import type {
   NormalizedStoreLogger,
@@ -8,7 +8,7 @@ import type {
   StoreLoggerAdapter,
 } from "#y31thwq3bdf0";
 
-const STORE_LOG_GROUP = "trebired.store";
+const STORE_LOG_GROUP = "package.store";
 
 function resolveLogger(
   logger?: StoreLogger,

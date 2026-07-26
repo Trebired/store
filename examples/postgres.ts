@@ -4,7 +4,7 @@ import {
   createPostgresJsonbStorageAdapter,
   createStore,
   defineEntityRegistry,
-} from "@trebired/store";
+} from "#k8n9w5v1p2q0";
 
 const entities = defineEntityRegistry({
   documents: {

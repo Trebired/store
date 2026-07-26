@@ -10,146 +10,6 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
-    "paths": {
-      "@trebired/store": [
-        "./src/index.ts"
-      ],
-      "#03c0aipgeoge": [
-        "./src/storage/sqlite/json.ts"
-      ],
-      "#1e65qk7we0f3": [
-        "./src/enricher/builder.ts"
-      ],
-      "#1u8d84lj7wzq": [
-        "./src/runtime/store-runtime.ts"
-      ],
-      "#3g4yh2ypwm1t": [
-        "./test/specs/subentity.spec.ts"
-      ],
-      "#3k3domto9hh7": [
-        "./src/runtime/sqlite/types.ts"
-      ],
-      "#3rm4j57116nj": [
-        "./scripts/prepare-dist.mjs"
-      ],
-      "#3ug859kbex8c": [
-        "./src/logging.ts"
-      ],
-      "#44o0z05ifdgn": [
-        "./src/core/result.ts"
-      ],
-      "#4f4sym6qlwt3": [
-        "./src/records/views.ts"
-      ],
-      "#613yyghfyv0a": [
-        "./src/core/enriched.ts"
-      ],
-      "#63uidh5cqxke": [
-        "./src/runtime/boot.ts"
-      ],
-      "#8cbzjjgc892p": [
-        "./src/runtime/registry.ts"
-      ],
-      "#8pewakkhamie": [
-        "./src/entity/registry.ts"
-      ],
-      "#a5xqu1rq2q04": [
-        "./src/runtime/provider-subentity.ts"
-      ],
-      "#a8a6v712yhzg": [
-        "./examples/basic.ts"
-      ],
-      "#aayjwnodxnar": [
-        "./src/runtime/boot/followups.ts"
-      ],
-      "#b4e4gjc7njzb": [
-        "./src/core/read.ts"
-      ],
-      "#b9rnmvf9p9z3": [
-        "./src/storage/postgres/jsonb.ts"
-      ],
-      "#bhaakxl2qkxy": [
-        "./src/runtime/sqlite.ts"
-      ],
-      "#bo18xc6n4smu": [
-        "./src/subentity/read.ts"
-      ],
-      "#by12tg0dnbxs": [
-        "./src/runtime/boot/helpers.ts"
-      ],
-      "#d3q3qxptfbbt": [
-        "./scripts/verify-pack.mjs"
-      ],
-      "#g06v32kod8xy": [
-        "./src/core/store.ts"
-      ],
-      "#g8u7bg42czn8": [
-        "./src/request/context.ts"
-      ],
-      "#gpaizcbh8900": [
-        "./src/core/runtime.ts"
-      ],
-      "#jk4ufstswpvh": [
-        "./src/repair/orphans.ts"
-      ],
-      "#k6jeu3jyjwht": [
-        "./src/runtime/postgres.ts"
-      ],
-      "#l51pnb6j0sxx": [
-        "./src/core/write.ts"
-      ],
-      "#mq84z0z7glm9": [
-        "./src/storage/memory.ts"
-      ],
-      "#nlliejgv8p5m": [
-        "./tb.code-discipline.ts"
-      ],
-      "#oz5habwl5021": [
-        "./src/cache/cache.ts"
-      ],
-      "#pq1c0xwc48qu": [
-        "./src/runtime/types.ts"
-      ],
-      "#pxavar91qrj2": [
-        "./src/runtime/boot/rewriter.ts"
-      ],
-      "#qcbwdtdi8gun": [
-        "./src/runtime/postgres-safety.ts"
-      ],
-      "#qmu6u0jug6cv": [
-        "./src/storage/sqlite/types.ts"
-      ],
-      "#r05cko7a02f8": [
-        "./src/core/private.ts"
-      ],
-      "#rc6d5lmoaws9": [
-        "./examples/postgres.ts"
-      ],
-      "#rzbzgbo1ebc2": [
-        "./test/specs/postgres.spec.ts"
-      ],
-      "#tfz0p9tqi4ox": [
-        "./test/specs/store.spec.ts"
-      ],
-      "#u0w09xmglhng": [
-        "./src/runtime/memo.ts"
-      ],
-      "#w3sf7ae6e20y": [
-        "./test/specs/enriched.spec.ts"
-      ],
-      "#wwir6gmfebbh": [
-        "./src/runtime/hydration.ts"
-      ],
-      "#xwy7fgl52hsw": [
-        "./src/core/validation.ts"
-      ],
-      "#y31thwq3bdf0": [
-        "./src/types.ts"
-      ],
-      "#zeealawo10hg": [
-        "./src/storage/postgres/validation.ts"
-      ]
-    },
     "strict": true,
     "target": "ES2020",
     "types": [
@@ -162,9 +22,9 @@
     "dist",
     ".tmp"
   ],
+  "extends": "./.code-discipline/generated/tsconfig.paths.json",
   "include": [
     "src/**/*.ts",
-    "test/**/*.ts",
     "examples/**/*.ts",
     "tb.code-discipline.ts"
   ]

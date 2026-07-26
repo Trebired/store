@@ -5,8 +5,8 @@ import type {
   LoggerAdapterLogMethod,
   LoggerAdapterWriter,
   NormalizedLoggerAdapter,
-} from "@trebired/logger-adapter";
-import type { ResultLike } from "@trebired/result";
+} from "@package/logger-adapter";
+import type { ResultLike } from "@package/result";
 
 export type MaybePromise<T> = T | Promise<T>;
 export type StoreLogMethod = LoggerAdapterLogMethod;

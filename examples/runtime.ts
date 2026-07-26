@@ -3,7 +3,7 @@ import {
   countBy,
   createStoreRuntime,
   relation,
-} from "@trebired/store";
+} from "#k8n9w5v1p2q0";
 
 const runtime = createStoreRuntime({
   boot: {

@@ -1,4 +1,4 @@
-import { result } from "@trebired/result";
+import { result } from "@package/result";
 
 import { resolveLogger } from "#3ug859kbex8c";
 import type {
@@ -16,7 +16,7 @@ import type {
   StoreWhere,
 } from "#y31thwq3bdf0";
 
-const BOOT_FOLLOW_UP_DISPATCH = Symbol.for("@trebired/store.bootFollowUpDispatch");
+const BOOT_FOLLOW_UP_DISPATCH = Symbol.for("package.store.bootFollowUpDispatch");
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
 
@@ -73,7 +73,7 @@ type BootFollowUpDispatcherRegistry = RuntimeFollowUpRegistry & {
 
 function createBootFollowUpDispatcher(options: BootFollowUpDispatcherOptions): BootFollowUpDispatcherRegistry {
   const logger = resolveLogger(options.logger, options.loggerAdapter);
-  const group = options.group || "trebired.store.boot";
+  const group = options.group || "package.store.boot";
   const registry = {} as BootFollowUpDispatcherRegistry;
   const dispatch = async (input: Parameters<RuntimeFollowUp>[0]) => {
     return dispatchFollowUp(input, options, logger, group);
@@ -240,8 +240,11 @@ function bootFollowUpSkipped(
   entity: string,
   details: BootFollowUpOutcomeDetails = {},
 ): RuntimeBootFollowUpOutcome {
-  const envelope = result.noop("boot-follow-up-skipped", details.message || "Boot follow-up skipped.", {
+  const envelope = result.noop("boot-follow-up-skipped", {
     details: details.details,
+    meta: {
+      message: details.message || "Boot follow-up skipped.",
+    },
   });
   return {
     ...envelope,
@@ -280,9 +283,10 @@ function bootFollowUpFailed(
   recordId?: string,
 ): RuntimeBootFollowUpOutcome {
   const message = error instanceof Error ? error.message : "Boot follow-up failed.";
-  const envelope = result.error(500, "boot-follow-up-failed", message, {
+  const envelope = result.error(500, "boot-follow-up-failed", {
     details: {
       cause: error,
+      message,
     },
   });
   return {

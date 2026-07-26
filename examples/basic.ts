@@ -3,8 +3,8 @@ import {
   createModeEnricherRegistry,
   createStore,
   defineEntityRegistry,
-} from "@trebired/store";
-import type { ModeEnricherHook, Store } from "@trebired/store";
+} from "#k8n9w5v1p2q0";
+import type { ModeEnricherHook, Store } from "#k8n9w5v1p2q0";
 
 const entities = defineEntityRegistry({
   documents: {

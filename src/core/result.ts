@@ -1,4 +1,4 @@
-import { result } from "@trebired/result";
+import { result } from "@package/result";
 
 import type { StoreErrorCode, StoreErrorDetails, StoreResult } from "#y31thwq3bdf0";
 
@@ -15,10 +15,11 @@ function fail<T>(
   details: Omit<StoreErrorDetails, "code"> = {},
   status = 400,
 ): StoreResult<T> {
-  return result.error(status, code, message, {
+  return result.error(status, code, {
     details: {
       ...details,
       code,
+      message,
     },
   }) as StoreResult<T>;
 }
