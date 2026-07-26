@@ -44,7 +44,7 @@ async function listSubEntities<TRecord extends StoreRecord = StoreRecord>(
 ): Promise<StoreResult<TRecord[]>> {
   const resolved = await resolveChildren(internals, name, parentWhere, context, options);
   if (!resolved.ok) {
-    return resolved as StoreResult<TRecord[]>;
+    return resolved as unknown as StoreResult<TRecord[]>;
   }
 
   const { definition, parent, children } = resolved.data || emptyResolvedChildren();
@@ -67,12 +67,12 @@ async function readSubEntityBy<TRecord extends StoreRecord = StoreRecord>(
 ): Promise<StoreResult<TRecord | null>> {
   const whereError = validateWhere(name, where);
   if (whereError) {
-    return whereError as StoreResult<TRecord | null>;
+    return whereError as unknown as StoreResult<TRecord | null>;
   }
 
   const resolved = await resolveChildren(internals, name, parentWhere, context, options);
   if (!resolved.ok) {
-    return resolved as StoreResult<TRecord | null>;
+    return resolved as unknown as StoreResult<TRecord | null>;
   }
 
   const { definition, parent, children } = resolved.data || emptyResolvedChildren();
@@ -103,7 +103,7 @@ async function countSubEntities(
 ): Promise<StoreResult<number>> {
   const resolved = await resolveChildren(internals, name, parentWhere, context, options);
   if (!resolved.ok) {
-    return resolved as StoreResult<number>;
+    return resolved as unknown as StoreResult<number>;
   }
 
   const { definition, parent, children } = (resolved.data || emptyResolvedChildren()) as ResolvedChildren;
@@ -159,7 +159,7 @@ async function resolveChildren(
 
   const contextError = definition.validateContext?.(context);
   if (contextError) {
-    return contextError as StoreResult<ResolvedChildren>;
+    return contextError as unknown as StoreResult<ResolvedChildren>;
   }
 
   const parent = await internals.readBy(definition.parent, parentWhere, context, {
@@ -167,7 +167,7 @@ async function resolveChildren(
     mode: definition.sourceMode || options.mode || "full",
   });
   if (!parent.ok || !parent.data) {
-    return parent as StoreResult<ResolvedChildren>;
+    return parent as unknown as StoreResult<ResolvedChildren>;
   }
 
   const value = parent.data[definition.childKey];

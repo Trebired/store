@@ -37,9 +37,10 @@ export type StoreErrorCode =
   | "store-sql-placeholder"
   | "store-storage-error"
   | "store-sub-entity-not-found";
-export type StoreResult<T> = ResultLike<T, StoreErrorDetails>;
+export type StoreResult<T> = Omit<ResultLike<T, StoreErrorDetails>, "data" | "message"> & { data: T; message: string };
 export type StoreErrorDetails = {
   code: StoreErrorCode;
+  message?: string;
   entity?: string;
   field?: string;
   id?: string;

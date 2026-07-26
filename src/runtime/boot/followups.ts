@@ -1,5 +1,5 @@
 import { result } from "@package/result";
-import { resolveLogger } from "#3ug859kbex8c";
+import { buildStoreLogGroup, resolveLogger } from "#3ug859kbex8c";
 import type {
   RuntimeBootFollowUpOutcome,
   RuntimeFollowUp,
@@ -69,7 +69,7 @@ type BootFollowUpDispatcherRegistry = RuntimeFollowUpRegistry & {
 };
 function createBootFollowUpDispatcher(options: BootFollowUpDispatcherOptions): BootFollowUpDispatcherRegistry {
   const logger = resolveLogger(options.logger, options.loggerAdapter);
-  const group = options.group || "package.store.boot";
+  const group = options.group || buildStoreLogGroup("boot");
   const registry = {} as BootFollowUpDispatcherRegistry;
   const dispatch = async (input: Parameters<RuntimeFollowUp>[0]) => {
     return dispatchFollowUp(input, options, logger, group);
@@ -232,7 +232,8 @@ function bootFollowUpSkipped(
     ...envelope,
     call,
     entity,
-    error_code: details.error_code || envelope.error_code,
+    error_code: details.error_code || envelope.status_code,
+    message: details.message || "Boot follow-up skipped.",
     recordId: details.recordId,
     result: details.result,
     skipped: true,
@@ -244,13 +245,14 @@ function bootFollowUpSucceeded(
   value?: unknown,
   recordId?: string,
 ): RuntimeBootFollowUpOutcome {
-  const envelope = result.ok("Boot follow-up completed.", {
+  const envelope = result.ok("boot-follow-up-completed", {
     data: value ?? null,
   });
   return {
     ...envelope,
     call,
     entity,
+    message: "Boot follow-up completed.",
     recordId,
     result: value,
     skipped: false,
@@ -263,7 +265,7 @@ function bootFollowUpFailed(
   recordId?: string,
 ): RuntimeBootFollowUpOutcome {
   const message = error instanceof Error ? error.message : "Boot follow-up failed.";
-  const envelope = result.error(500, "boot-follow-up-failed", {
+  const envelope = result.error("boot-follow-up-failed", 500, {
     details: {
       cause: error,
       message,
@@ -273,6 +275,7 @@ function bootFollowUpFailed(
     ...envelope,
     call,
     entity,
+    message,
     recordId,
     result: error,
     skipped: false,

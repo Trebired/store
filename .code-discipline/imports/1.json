@@ -7,6 +7,7 @@
   "#3k3domto9hh7": "./src/runtime/sqlite/types.ts",
   "#3rm4j57116nj": "./scripts/prepare-dist.mjs",
   "#3ug859kbex8c": "./src/logging.ts",
+  "#3vp1xejwysbn": "./src/package-metadata.ts",
   "#44o0z05ifdgn": "./src/core/result.ts",
   "#4f4sym6qlwt3": "./src/records/views.ts",
   "#5byg3zbo0q76": "./scripts/verify-pack.mjs",

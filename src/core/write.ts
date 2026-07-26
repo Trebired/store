@@ -21,6 +21,7 @@ import {
   validateId,
   validateRecord,
 } from "./validation.js";
+import { buildStoreLogGroup } from "#3ug859kbex8c";
 
 function createEntityWrite(
   runtime: StoreRuntime,
@@ -43,36 +44,36 @@ async function put<TRecord extends StoreRecord>(
 ): Promise<StoreResult<TRecord>> {
   const resolved = runtime.resolveEntity(entityInput);
   if (!resolved.ok) {
-    return resolved.result as StoreResult<TRecord>;
+    return resolved.result as unknown as StoreResult<TRecord>;
   }
 
   const normalized = normalizeContext(resolved.value.name, context);
   if (!normalized.ok) {
-    return normalized as StoreResult<TRecord>;
+    return normalized as unknown as StoreResult<TRecord>;
   }
   const ctx = normalized.data || {};
   const invalid = validateWriteInput(resolved.value.name, resolved.value.definition, ctx, record, writeOptions);
   if (invalid) {
-    return invalid as StoreResult<TRecord>;
+    return invalid as unknown as StoreResult<TRecord>;
   }
 
   const storage = runtime.resolveStorageResult(resolved.value);
   if (!storage.ok) {
-    return storage.result as StoreResult<TRecord>;
+    return storage.result as unknown as StoreResult<TRecord>;
   }
 
   try {
     const stored = applyRequiredContext(record, resolved.value.definition, ctx) as TRecord;
     const out = await storage.value.put(resolved.value, ctx, stored, writeOptions);
     invalidate(runtime, resolved.value.name);
-    runtime.logger?.info("package.store.write", "Store record saved.", {
+    runtime.logger?.info(buildStoreLogGroup("write"), "Store record saved.", {
       entity: resolved.value.name,
       id: out.id,
       operation: "put",
     });
     return ok(out as TRecord, "Store record saved.");
   } catch (error) {
-    runtime.logger?.error("package.store.write", "Store record save failed.", {
+    runtime.logger?.error(buildStoreLogGroup("write"), "Store record save failed.", {
       entity: resolved.value.name,
       error,
       operation: "put",
@@ -96,7 +97,7 @@ async function writeBy(
     scope: writeOptions.scope,
   });
   if (!current.ok || !current.data) {
-    return current as StoreResult<StoreRecord | null>;
+    return current as unknown as StoreResult<StoreRecord | null>;
   }
 
   return put(runtime, entityInput, context, {
@@ -115,29 +116,29 @@ async function remove(
 ): Promise<StoreResult<boolean>> {
   const resolved = runtime.resolveEntity(entityInput);
   if (!resolved.ok) {
-    return resolved.result as StoreResult<boolean>;
+    return resolved.result as unknown as StoreResult<boolean>;
   }
 
   const normalized = normalizeContext(resolved.value.name, context);
   if (!normalized.ok) {
-    return normalized as StoreResult<boolean>;
+    return normalized as unknown as StoreResult<boolean>;
   }
   const ctx = normalized.data || {};
   const invalid = validateContext(resolved.value.name, resolved.value.definition, ctx, writeOptions.scope)
     || validateId(resolved.value.name, id);
   if (invalid) {
-    return invalid as StoreResult<boolean>;
+    return invalid as unknown as StoreResult<boolean>;
   }
 
   const storage = runtime.resolveStorageResult(resolved.value);
   if (!storage.ok) {
-    return storage.result as StoreResult<boolean>;
+    return storage.result as unknown as StoreResult<boolean>;
   }
 
   try {
     const removed = await storage.value.remove(resolved.value, ctx, id, writeOptions);
     invalidate(runtime, resolved.value.name);
-    runtime.logger?.info("package.store.write", "Store record remove completed.", {
+    runtime.logger?.info(buildStoreLogGroup("write"), "Store record remove completed.", {
       entity: resolved.value.name,
       id,
       operation: "remove",
@@ -145,7 +146,7 @@ async function remove(
     });
     return ok(removed, removed ? "Store record removed." : "Store record was already absent.");
   } catch (error) {
-    runtime.logger?.error("package.store.write", "Store record remove failed.", {
+    runtime.logger?.error(buildStoreLogGroup("write"), "Store record remove failed.", {
       entity: resolved.value.name,
       error,
       id,
@@ -164,29 +165,29 @@ async function removeMany(
 ): Promise<StoreResult<StoreBulkRemoveResult>> {
   const resolved = runtime.resolveEntity(entityInput);
   if (!resolved.ok) {
-    return resolved.result as StoreResult<StoreBulkRemoveResult>;
+    return resolved.result as unknown as StoreResult<StoreBulkRemoveResult>;
   }
 
   const normalized = normalizeContext(resolved.value.name, context);
   if (!normalized.ok) {
-    return normalized as StoreResult<StoreBulkRemoveResult>;
+    return normalized as unknown as StoreResult<StoreBulkRemoveResult>;
   }
   const ctx = normalized.data || {};
   const invalid = validateContext(resolved.value.name, resolved.value.definition, ctx, writeOptions.scope)
     || validateIds(resolved.value.name, ids);
   if (invalid) {
-    return invalid as StoreResult<StoreBulkRemoveResult>;
+    return invalid as unknown as StoreResult<StoreBulkRemoveResult>;
   }
 
   const storage = runtime.resolveStorageResult(resolved.value);
   if (!storage.ok) {
-    return storage.result as StoreResult<StoreBulkRemoveResult>;
+    return storage.result as unknown as StoreResult<StoreBulkRemoveResult>;
   }
 
   try {
     const removed = await removeManyFromStorage(storage.value, resolved.value, ctx, ids, writeOptions);
     invalidate(runtime, resolved.value.name);
-    runtime.logger?.info("package.store.write", "Store records bulk remove completed.", {
+    runtime.logger?.info(buildStoreLogGroup("write"), "Store records bulk remove completed.", {
       entity: resolved.value.name,
       operation: "removeMany",
       removed: removed.removed,
@@ -194,7 +195,7 @@ async function removeMany(
     });
     return ok(removed, "Store records bulk remove completed.");
   } catch (error) {
-    runtime.logger?.error("package.store.write", "Store records bulk remove failed.", {
+    runtime.logger?.error(buildStoreLogGroup("write"), "Store records bulk remove failed.", {
       entity: resolved.value.name,
       error,
       operation: "removeMany",

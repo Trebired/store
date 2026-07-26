@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import type { EntityRegistry, NormalizedStoreLogger, PostgresStoreClient } from "#y31thwq3bdf0";
+import { buildStoreLogGroup } from "#3ug859kbex8c";
 import type {
   RuntimePostgresClient,
   RuntimePostgresQueryResult,
@@ -14,6 +15,7 @@ import {
   validateRuntimePostgresQuery,
 } from "./postgres-safety.js";
 const DEFAULT_SLOW_QUERY_MS = 250;
+const POSTGRES_LOG_GROUP = buildStoreLogGroup("postgres");
 function createRuntimePostgres(
   options: StoreRuntimePostgresOptions | undefined,
   entities: EntityRegistry,
@@ -63,7 +65,7 @@ function createPool(options: StoreRuntimePostgresOptions, logger: NormalizedStor
     max: options.pool?.max,
     statement_timeout: options.pool?.statementTimeoutMs,
   });
-    logger?.info("package.store.postgres", "Postgres pool created.", {
+    logger?.info(POSTGRES_LOG_GROUP, "Postgres pool created.", {
     databaseUrl: redactDatabaseUrl(options.databaseUrl),
     pool: options.pool || {},
   });
@@ -89,7 +91,7 @@ async function runQuery<T>(
     void config.metrics?.(metricEvent(Date.now() - started, options, true, rowCount(result)));
     return envelopeSuccess(result, config);
   } catch (error) {
-    logger?.error("package.store.postgres", "Postgres query failed.", {
+    logger?.error(POSTGRES_LOG_GROUP, "Postgres query failed.", {
       caller,
       error,
       name: options?.name,
@@ -205,7 +207,7 @@ async function runInternal(
 ): Promise<void> {
   await client.query(sql, [...params]);
   if (message) {
-    logger?.info("package.store.postgres", message, {});
+    logger?.info(POSTGRES_LOG_GROUP, message, {});
   }
 }
 function validateQueryResult(
@@ -233,7 +235,7 @@ function logQuerySuccess(
   if (!slow && !config.logOperations) {
     return;
   }
-  logger?.[slow ? "warn" : "info"]("package.store.postgres", slow ? "Postgres slow query completed." : "Postgres query completed.", {
+  logger?.[slow ? "warn" : "info"](POSTGRES_LOG_GROUP, slow ? "Postgres slow query completed." : "Postgres query completed.", {
     caller,
     elapsedMs,
     name: options?.name,
@@ -253,7 +255,7 @@ function logPoolWait(
   if (elapsedMs < 100) {
     return;
   }
-  logger?.warn("package.store.postgres", "Postgres pool wait completed.", {
+  logger?.warn(POSTGRES_LOG_GROUP, "Postgres pool wait completed.", {
     caller,
     elapsedMs,
     idle: client.idleCount || 0,
@@ -292,7 +294,7 @@ function errorCode(error: unknown): string {
 }
 function attachPoolErrorLogger(client: RuntimePostgresClient, logger: NormalizedStoreLogger | null): void {
   client.on?.("error", (error) => {
-    logger?.error("package.store.postgres", "Postgres pool error.", {
+    logger?.error(POSTGRES_LOG_GROUP, "Postgres pool error.", {
       error,
     });
   });

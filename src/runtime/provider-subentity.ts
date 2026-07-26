@@ -43,7 +43,7 @@ function wrapProviderSubEntities(
         return read.hasAny(entity, context, options);
       }
       const count = await readProviderCount(read, entity, provider, context, options);
-      return count.ok ? ok(Number(count.data) > 0, "Store virtual sub-entity read completed.") : count as StoreResult<boolean>;
+      return count.ok ? ok(Number(count.data) > 0, "Store virtual sub-entity read completed.") : count as unknown as StoreResult<boolean>;
     },
   };
 }
@@ -57,7 +57,7 @@ async function readProviderAll<TRecord extends StoreRecord>(
 ): Promise<StoreResult<TRecord[]>> {
   const valid = validateProviderContext(entity, provider, context);
   if (!valid.ok) {
-    return valid.result as StoreResult<TRecord[]>;
+    return valid.result as unknown as StoreResult<TRecord[]>;
   }
   const rows = await provider.list?.(valid.context, options, createProviderApi(read)) ?? [];
   return ok(rows as TRecord[], "Store virtual sub-entity read completed.");
@@ -73,7 +73,7 @@ async function readProviderBy<TRecord extends StoreRecord>(
 ): Promise<StoreResult<TRecord | null>> {
   const valid = validateProviderContext(entity, provider, context);
   if (!valid.ok) {
-    return valid.result as StoreResult<TRecord | null>;
+    return valid.result as unknown as StoreResult<TRecord | null>;
   }
   const row = await provider.by?.(where, valid.context, options, createProviderApi(read)) ?? null;
   return ok(row as TRecord | null, "Store virtual sub-entity read completed.");
@@ -88,7 +88,7 @@ async function readProviderCount(
 ): Promise<StoreResult<number>> {
   const valid = validateProviderContext(entity, provider, context);
   if (!valid.ok) {
-    return valid.result as StoreResult<number>;
+    return valid.result as unknown as StoreResult<number>;
   }
   const count = await provider.count?.(valid.context, options, createProviderApi(read)) ?? 0;
   return ok(Number(count) || 0, "Store virtual sub-entity count completed.");
@@ -109,7 +109,7 @@ function validateProviderContext(
   if (!normalized.ok) {
     return {
       ok: false,
-      result: normalized as StoreResult<never>,
+      result: normalized as unknown as StoreResult<never>,
     };
   }
   const contextValue = normalized.data || {};

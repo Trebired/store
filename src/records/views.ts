@@ -113,7 +113,7 @@ async function remove(
     scope: options?.scope,
   });
   if (!current.ok || !current.data) {
-    return current.ok ? ok(false, "Record view row was already absent.") : current as StoreResult<boolean>;
+    return current.ok ? ok(false, "Record view row was already absent.") : current as unknown as StoreResult<boolean>;
   }
 
   return store.entity.write.remove(entity, context(options), id, options);
@@ -129,7 +129,7 @@ async function upsertUnique<TRecord extends StoreRecord>(
   const normalized = normalize(config, row) as TRecord;
   const where = uniqueWhere(config, normalized);
   if (!where.ok) {
-    return where as StoreResult<TRecord>;
+    return where as unknown as StoreResult<TRecord>;
   }
 
   const unique = where.data as StoreWhere;
@@ -139,7 +139,7 @@ async function upsertUnique<TRecord extends StoreRecord>(
     scope: options?.scope,
   });
   if (!current.ok) {
-    return current as StoreResult<TRecord>;
+    return current as unknown as StoreResult<TRecord>;
   }
 
   const next = current.data ? normalize(config, {

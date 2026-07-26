@@ -3,6 +3,7 @@ import type {
   NormalizedStoreLogger,
 } from "#y31thwq3bdf0";
 import { quoteIdentifier, validateSqlIdentifier } from "#zeealawo10hg";
+import { buildStoreLogGroup } from "#3ug859kbex8c";
 import { detectQueryCaller } from "./postgres-safety.js";
 import type { SqliteDatabase } from "#qmu6u0jug6cv";
 import type {
@@ -11,8 +12,8 @@ import type {
   StoreRuntimeSqlite,
   StoreRuntimeSqliteOptions,
 } from "./sqlite/types.js";
-
 const DEFAULT_SLOW_QUERY_MS = 250;
+const SQLITE_LOG_GROUP = buildStoreLogGroup("sqlite");
 function createRuntimeSqlite(
   options: StoreRuntimeSqliteOptions | undefined,
   entities: EntityRegistry,
@@ -36,11 +37,10 @@ function createRuntimeSqlite(
     },
   };
 }
-
 function resolveDatabase(options: StoreRuntimeSqliteOptions, logger: NormalizedStoreLogger | null): SqliteDatabase {
   if (options.database) return options.database;
   if (options.path) {
-    logger?.info("package.store.sqlite", "SQLite database configured.", {
+    logger?.info(SQLITE_LOG_GROUP, "SQLite database configured.", {
       path: options.path,
     });
     return createLazyBunSqliteDatabase(options.path);
@@ -90,7 +90,7 @@ async function runQuery<T>(
     void config.metrics?.(metricEvent(Date.now() - started, options, true, result.rowCount));
     return envelopeSuccess(result.rows, result.rowCount, config);
   } catch (error) {
-    logger?.error("package.store.sqlite", "SQLite query failed.", {
+    logger?.error(SQLITE_LOG_GROUP, "SQLite query failed.", {
       caller,
       error,
       name: options?.name,
@@ -168,7 +168,7 @@ async function runInternal(
   message?: string,
 ): Promise<void> {
   await sqliteAll(client, sql, params);
-  if (message) logger?.info("package.store.sqlite", message, {});
+  if (message) logger?.info(SQLITE_LOG_GROUP, message, {});
 }
 
 function validateRuntimeSqliteQuery(
@@ -261,7 +261,7 @@ function logQuerySuccess(
 ): void {
   const slow = elapsedMs >= (config.slowQueryMs ?? DEFAULT_SLOW_QUERY_MS);
   if (!slow && !config.logOperations) return;
-  logger?.[slow ? "warn" : "info"]("package.store.sqlite", slow ? "SQLite slow query completed." : "SQLite query completed.", {
+  logger?.[slow ? "warn" : "info"](SQLITE_LOG_GROUP, slow ? "SQLite slow query completed." : "SQLite query completed.", {
     caller,
     elapsedMs,
     name: options?.name,

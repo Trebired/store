@@ -13,7 +13,7 @@ import type {
   StoreResult,
 } from "#y31thwq3bdf0";
 import { assertReadableRawRecord, markEnrichedRecord } from "./enriched.js";
-import { resolveLogger } from "#3ug859kbex8c";
+import { buildStoreLogGroup, resolveLogger } from "#3ug859kbex8c";
 import { redactPrivateFields } from "./private.js";
 import { fail, ok, storageFail } from "./result.js";
 
@@ -32,7 +32,7 @@ class StoreRuntime {
     this.cache = new StoreCache(options.cache);
     this.logger = resolveLogger(options.logger, options.loggerAdapter);
     this.resolveStorage = createStorageResolver(options);
-    this.logger?.info("package.store.create", "Store created.", {
+    this.logger?.info(buildStoreLogGroup("create"), "Store created.", {
       cacheEnabled: this.cache.inspect().enabled,
       entities: Object.keys(options.entities),
     });
@@ -76,7 +76,7 @@ class StoreRuntime {
       const mode = readOptions.mode || "full";
       const key = this.cache.createKey(entity.name, operation, createReadKeyInput(input, readOptions), context, mode);
       const cached = await this.cache.read(entity.name, key, load, readOptions.cacheBypass || readOptions.cache === false);
-      this.logger?.info("package.store.read", "Store read completed.", {
+      this.logger?.info(buildStoreLogGroup("read"), "Store read completed.", {
         cache: cached.inspection,
         entity: entity.name,
         mode,
@@ -86,13 +86,13 @@ class StoreRuntime {
         cache: cached.inspection,
       } : undefined);
     } catch (error) {
-      this.logger?.error("package.store.read", "Store read failed.", {
+      this.logger?.error(buildStoreLogGroup("read"), "Store read failed.", {
         entity: entity.name,
         error,
         operation,
       });
       return error instanceof StoreOperationError
-        ? error.result as StoreResult<T>
+        ? error.result as unknown as StoreResult<T>
         : storageFail(error, entity.name, entity.definition.storage);
     }
   }
@@ -130,7 +130,7 @@ class StoreRuntime {
 
   invalidate(entity: string): void {
     this.cache.invalidateEntity(entity);
-    this.logger?.info("package.store.cache", "Store entity cache invalidated.", {
+    this.logger?.info(buildStoreLogGroup("cache"), "Store entity cache invalidated.", {
       entity,
     });
   }
@@ -160,7 +160,7 @@ class StoreRuntime {
       throw new StoreOperationError(fail("store-invalid-mode", "Store mode is not registered.", {
         entity: entity.name,
         mode,
-      }) as StoreResult<never>);
+      }) as unknown as StoreResult<never>);
     }
 
     const selected = modeDefinition.select ? modeDefinition.select(record) : record;
@@ -200,7 +200,7 @@ function unresolved(
 function assertReadable(entity: ResolvedEntity, row: StoreRecord): void {
   const invalid = assertReadableRawRecord(entity.name, row);
   if (invalid) {
-    throw new StoreOperationError(invalid as StoreResult<never>);
+    throw new StoreOperationError(invalid as unknown as StoreResult<never>);
   }
 }
 

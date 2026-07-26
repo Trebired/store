@@ -27,23 +27,23 @@ async function readAll<TRecord extends StoreRecord>(
 ): Promise<StoreResult<TRecord[]>> {
   const resolved = runtime.resolveEntity(entityInput);
   if (!resolved.ok) {
-    return resolved.result as StoreResult<TRecord[]>;
+    return resolved.result as unknown as StoreResult<TRecord[]>;
   }
 
   const normalized = normalizeContext(resolved.value.name, context);
   if (!normalized.ok) {
-    return normalized as StoreResult<TRecord[]>;
+    return normalized as unknown as StoreResult<TRecord[]>;
   }
   const ctx = normalized.data || {};
   const contextError = validateContext(resolved.value.name, resolved.value.definition, ctx, readOptions.scope);
   const whereError = validateOptionalWhere(resolved.value.name, readOptions.where);
   if (contextError || whereError) {
-    return (contextError || whereError) as StoreResult<TRecord[]>;
+    return (contextError || whereError) as unknown as StoreResult<TRecord[]>;
   }
 
   const storage = runtime.resolveStorageResult(resolved.value);
   if (!storage.ok) {
-    return storage.result as StoreResult<TRecord[]>;
+    return storage.result as unknown as StoreResult<TRecord[]>;
   }
 
   return runtime.cachedRead(resolved.value, "all", readOptions.where ?? {}, ctx, readOptions, async () => {
@@ -61,24 +61,24 @@ async function readBy<TRecord extends StoreRecord>(
 ): Promise<StoreResult<TRecord | null>> {
   const resolved = runtime.resolveEntity(entityInput);
   if (!resolved.ok) {
-    return resolved.result as StoreResult<TRecord | null>;
+    return resolved.result as unknown as StoreResult<TRecord | null>;
   }
 
   const normalized = normalizeContext(resolved.value.name, context);
   if (!normalized.ok) {
-    return normalized as StoreResult<TRecord | null>;
+    return normalized as unknown as StoreResult<TRecord | null>;
   }
   const ctx = normalized.data || {};
   const invalid = validateWhere(resolved.value.name, where)
     || validateOptionalWhere(resolved.value.name, readOptions.where)
     || validateContext(resolved.value.name, resolved.value.definition, ctx, readOptions.scope);
   if (invalid) {
-    return invalid as StoreResult<TRecord | null>;
+    return invalid as unknown as StoreResult<TRecord | null>;
   }
 
   const storage = runtime.resolveStorageResult(resolved.value);
   if (!storage.ok) {
-    return storage.result as StoreResult<TRecord | null>;
+    return storage.result as unknown as StoreResult<TRecord | null>;
   }
 
   return runtime.cachedRead(resolved.value, "by", where, ctx, readOptions, async () => {
@@ -95,23 +95,23 @@ async function count(
 ): Promise<StoreResult<number>> {
   const resolved = runtime.resolveEntity(entityInput);
   if (!resolved.ok) {
-    return resolved.result as StoreResult<number>;
+    return resolved.result as unknown as StoreResult<number>;
   }
 
   const normalized = normalizeContext(resolved.value.name, context);
   if (!normalized.ok) {
-    return normalized as StoreResult<number>;
+    return normalized as unknown as StoreResult<number>;
   }
   const ctx = normalized.data || {};
   const contextError = validateContext(resolved.value.name, resolved.value.definition, ctx, readOptions.scope);
   const whereError = validateOptionalWhere(resolved.value.name, readOptions.where);
   if (contextError || whereError) {
-    return (contextError || whereError) as StoreResult<number>;
+    return (contextError || whereError) as unknown as StoreResult<number>;
   }
 
   const storage = runtime.resolveStorageResult(resolved.value);
   if (!storage.ok) {
-    return storage.result as StoreResult<number>;
+    return storage.result as unknown as StoreResult<number>;
   }
 
   return runtime.cachedRead(resolved.value, "count", readOptions.where ?? {}, ctx, readOptions, () => {
@@ -127,23 +127,23 @@ async function hasAny(
 ): Promise<StoreResult<boolean>> {
   const resolved = runtime.resolveEntity(entityInput);
   if (!resolved.ok) {
-    return resolved.result as StoreResult<boolean>;
+    return resolved.result as unknown as StoreResult<boolean>;
   }
 
   const normalized = normalizeContext(resolved.value.name, context);
   if (!normalized.ok) {
-    return normalized as StoreResult<boolean>;
+    return normalized as unknown as StoreResult<boolean>;
   }
   const ctx = normalized.data || {};
   const contextError = validateContext(resolved.value.name, resolved.value.definition, ctx, readOptions.scope);
   const whereError = validateOptionalWhere(resolved.value.name, readOptions.where);
   if (contextError || whereError) {
-    return (contextError || whereError) as StoreResult<boolean>;
+    return (contextError || whereError) as unknown as StoreResult<boolean>;
   }
 
   const storage = runtime.resolveStorageResult(resolved.value);
   if (!storage.ok) {
-    return storage.result as StoreResult<boolean>;
+    return storage.result as unknown as StoreResult<boolean>;
   }
 
   return runtime.cachedRead(resolved.value, "hasAny", readOptions.where ?? {}, ctx, readOptions, () => {
