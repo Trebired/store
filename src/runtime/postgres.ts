@@ -1,5 +1,4 @@
 import { Pool } from "pg";
-
 import type { EntityRegistry, NormalizedStoreLogger, PostgresStoreClient } from "#y31thwq3bdf0";
 import type {
   RuntimePostgresClient,
@@ -14,9 +13,7 @@ import {
   redactDatabaseUrl,
   validateRuntimePostgresQuery,
 } from "./postgres-safety.js";
-
 const DEFAULT_SLOW_QUERY_MS = 250;
-
 function createRuntimePostgres(
   options: StoreRuntimePostgresOptions | undefined,
   entities: EntityRegistry,
@@ -39,7 +36,6 @@ function createRuntimePostgres(
       return runQuery<T>(client, sql, params, queryOptions, config, logger);
     },
   };
-
   attachPoolErrorLogger(client, logger);
   return {
     client: createStorageClient(client, config, logger),
@@ -47,7 +43,6 @@ function createRuntimePostgres(
     schema,
   };
 }
-
 function createStorageClient(
   client: RuntimePostgresClient,
   config: StoreRuntimePostgresOptions,
@@ -60,7 +55,6 @@ function createStorageClient(
     }, config, logger),
   };
 }
-
 function createPool(options: StoreRuntimePostgresOptions, logger: NormalizedStoreLogger | null): RuntimePostgresClient {
   const pool = new Pool({
     connectionString: options.databaseUrl,
@@ -75,7 +69,6 @@ function createPool(options: StoreRuntimePostgresOptions, logger: NormalizedStor
   });
   return pool;
 }
-
 async function runQuery<T>(
   client: RuntimePostgresClient,
   sql: string,
@@ -106,7 +99,6 @@ async function runQuery<T>(
     return handleQueryError<T>(error, config);
   }
 }
-
 async function queryClient<T>(
   client: RuntimePostgresClient,
   sql: string,
@@ -119,7 +111,6 @@ async function queryClient<T>(
   if (!client.connect) {
     return client.query<T>(sql, [...params]);
   }
-
   const waitStarted = Date.now();
   const pooled = await client.connect();
   logPoolWait(client, Date.now() - waitStarted, caller, options, config, logger);
@@ -129,7 +120,6 @@ async function queryClient<T>(
     pooled.release?.();
   }
 }
-
 function envelopeSuccess<T>(
   result: { rows?: T[]; rowCount?: number },
   config: StoreRuntimePostgresOptions,
@@ -144,7 +134,6 @@ function envelopeSuccess<T>(
     rows,
   };
 }
-
 function handleQueryError<T>(error: unknown, config: StoreRuntimePostgresOptions): RuntimePostgresQueryResult<T> {
   if (config.resultMode === "envelope") {
     return {
@@ -156,10 +145,8 @@ function handleQueryError<T>(error: unknown, config: StoreRuntimePostgresOptions
       rows: [],
     };
   }
-
   throw error;
 }
-
 async function initPostgres(
   client: RuntimePostgresClient,
   schema: string,
@@ -185,7 +172,6 @@ async function initPostgres(
     });
   }
 }
-
 async function createEntityTable(
   client: RuntimePostgresClient,
   schema: string,
@@ -196,7 +182,6 @@ async function createEntityTable(
   await runInternal(client, `create table if not exists ${table} (id text primary key, record jsonb not null)`, [], logger);
   await runInternal(client, `create index if not exists ${quoteIdentifier(`${tableInput}_record_gin_idx`)} on ${table} using gin (record)`, [], logger);
 }
-
 async function createExpressionIndex(
   client: RuntimePostgresClient,
   schema: string,
@@ -211,7 +196,6 @@ async function createExpressionIndex(
   const sql = `create index if not exists ${quoteIdentifier(indexName)} on ${tableName(schema, tableInput)} using ${method} (${expression})`;
   await runInternal(client, sql, [], logger);
 }
-
 async function runInternal(
   client: RuntimePostgresClient,
   sql: string,
@@ -224,7 +208,6 @@ async function runInternal(
     logger?.info("package.store.postgres", message, {});
   }
 }
-
 function validateQueryResult(
   sql: string,
   params: readonly unknown[],
@@ -237,7 +220,6 @@ function validateQueryResult(
     return error instanceof Error ? error : new Error(String(error));
   }
 }
-
 function logQuerySuccess(
   logger: NormalizedStoreLogger | null,
   sql: string,
@@ -251,7 +233,6 @@ function logQuerySuccess(
   if (!slow && !config.logOperations) {
     return;
   }
-
   logger?.[slow ? "warn" : "info"]("package.store.postgres", slow ? "Postgres slow query completed." : "Postgres query completed.", {
     caller,
     elapsedMs,
@@ -261,7 +242,6 @@ function logQuerySuccess(
     sql: summarizeSql(sql),
   });
 }
-
 function logPoolWait(
   client: RuntimePostgresClient,
   elapsedMs: number,
@@ -284,7 +264,6 @@ function logPoolWait(
   });
   void config.metrics?.(metricEvent(elapsedMs, options, true, 0));
 }
-
 function metricEvent(
   elapsedMs: number,
   options: RuntimePostgresQueryOptions | undefined,
@@ -299,11 +278,9 @@ function metricEvent(
     success,
   };
 }
-
 function rowCount(result: { rows?: unknown[]; rowCount?: number }): number {
   return Number.isFinite(Number(result.rowCount)) ? Number(result.rowCount) : result.rows?.length || 0;
 }
-
 function errorCode(error: unknown): string {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error || "").toLowerCase();
   if (message.includes("empty")) return "query-empty";
@@ -313,7 +290,6 @@ function errorCode(error: unknown): string {
   if (message.includes("literal")) return "query-literal-forbidden";
   return "query-failed";
 }
-
 function attachPoolErrorLogger(client: RuntimePostgresClient, logger: NormalizedStoreLogger | null): void {
   client.on?.("error", (error) => {
     logger?.error("package.store.postgres", "Postgres pool error.", {
@@ -321,7 +297,6 @@ function attachPoolErrorLogger(client: RuntimePostgresClient, logger: Normalized
     });
   });
 }
-
 function validateSchema(schemaInput?: string): string {
   const schema = schemaInput || "public";
   const error = validateSqlIdentifier(schema);
@@ -330,7 +305,6 @@ function validateSchema(schemaInput?: string): string {
   }
   return schema;
 }
-
 function tableName(schema: string, tableInput: string): string {
   const error = validateSqlIdentifier(tableInput);
   if (error) {
@@ -338,7 +312,6 @@ function tableName(schema: string, tableInput: string): string {
   }
   return `${quoteIdentifier(schema)}.${quoteIdentifier(tableInput)}`;
 }
-
 function validateSqlFragment(value: string): void {
   try {
     validateRuntimePostgresQuery(`select ${value}`, [], {
@@ -349,11 +322,9 @@ function validateSqlFragment(value: string): void {
     throw new Error("Postgres index expression is not safe.");
   }
 }
-
 function summarizeSql(sql: string): string {
   return sql.replace(/\s+/gu, " ").trim().slice(0, 240);
 }
-
 function hashText(value: string): string {
   let hash = 0;
   for (const char of value) {
@@ -361,7 +332,6 @@ function hashText(value: string): string {
   }
   return Math.abs(hash).toString(36);
 }
-
 export {
   createRuntimePostgres,
 };
