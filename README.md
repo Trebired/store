@@ -1,6 +1,6 @@
 # @trebired/store
 
-Reusable generic entity store for Bun and Node.js applications, with typed entity registries, SQLite and scoped JSONB storage, mode enrichment, request-scoped loaders, cache invalidation, and host-defined sub-entity reads.
+Reusable generic entity store for Bun applications, with typed entity registries, SQLite and scoped JSONB storage, mode enrichment, request-scoped loaders, cache invalidation, and host-defined sub-entity reads.
 
 `@trebired/store` is the generic Trebired package for hosts that already know their entities but should not keep rebuilding the same persistence, context scoping, read modes, cache, and enriched-record safety layer.
 
@@ -32,16 +32,16 @@ It does not know about products, deployments, repositories, routes, frontend pan
 
 ## Install
 
-Runtime support: Bun 1+ and Node.js 18+.
+Runtime support: Bun 1+.
 
 ```sh
-npm install @trebired/store
+bun i @trebired/store
 ```
 
 For the PostgreSQL adapter:
 
 ```sh
-npm install pg
+bun add pg
 ```
 
 SQLite does not add a native runtime dependency. Pass a compatible SQLite database/client, such as Bun SQLite, to the adapter or runtime.
