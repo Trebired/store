@@ -1017,7 +1017,3 @@ This package does not:
 - own domain schema or product entities
 - hide storage-engine policy from the host
 - generate migrations or application repositories
-
-## License
-
-Licensed under MIT. See [LICENSE](./LICENSE).
