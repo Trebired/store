@@ -1,6 +1,6 @@
 {
   "name": "@trebired/store",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Reusable generic entity store for Bun with typed entity registries, SQLite, scoped JSONB storage, modes, request loaders, cache invalidation, and sub-entity reads.",
   "type": "module",
   "private": false,
@@ -30,11 +30,12 @@
     "README.md"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && bun ./scripts/prepare-dist.mjs prepare-dist",
+    "build": "bun run prepare:generated && rm -rf dist && tsc -p tsconfig.build.json && bun ./scripts/prepare-dist.mjs prepare-dist",
     "postpack": "bun ./scripts/prepare-dist.mjs postpack",
     "prepack": "bun run build && bun ./scripts/prepare-dist.mjs prepack",
     "prepublishOnly": "bun run typecheck && bun run verify:pack",
-    "typecheck": "tsc --noEmit",
+    "prepare:generated": "bun ./scripts/build/generated/tsconfig.mjs",
+    "typecheck": "bun run prepare:generated && tsc --noEmit",
     "verify:pack": "bun ./scripts/verify-pack.mjs"
   },
   "dependencies": {
