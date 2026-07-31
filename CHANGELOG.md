@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.7
+
+- Aligned two internal Symbol keys (`enrichedBrand`, `BOOT_FOLLOW_UP_DISPATCH`) with the `@package/store/...` naming convention used by every other package's internal Symbols; they previously used an inconsistent dot-separated form.
+- Fixed a broken published-package build: a fresh checkout has no committed `.code-discipline/generated/` output, and nothing regenerated it before `typecheck`/`build`, so every internal `#hash` import failed to resolve. `typecheck` and `build` now run `prepare:generated` first.
+- Standardized package metadata (author field, config-driven organization name, dropped the Node engine constraint) and migrated `.code-discipline/config.ts` to `defineCodeDisciplineConfig`.
+- Normalized README structure and removed the license footer.
+- Updated the `@trebired/code-discipline` devDependency to 4.8.0.
+
 ## 1.0.5
 
 - Standardized package metadata ordering and contributing guidance around the Trebired writing style.
