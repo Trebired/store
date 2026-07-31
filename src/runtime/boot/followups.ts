@@ -14,7 +14,7 @@ import type {
   StoreRecord,
   StoreWhere,
 } from "#y31thwq3bdf0";
-const BOOT_FOLLOW_UP_DISPATCH = Symbol.for("package.store.bootFollowUpDispatch");
+const BOOT_FOLLOW_UP_DISPATCH = Symbol.for("@package/store/boot-follow-up-dispatch");
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
 interface BootFollowUpDispatcherOptions {

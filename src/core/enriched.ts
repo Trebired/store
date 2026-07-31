@@ -2,7 +2,7 @@ import type { StoreRecord, StoreResult } from "#y31thwq3bdf0";
 import { fail } from "./result.js";
 
 const STORE_ENRICHED_MARKER = "__store_enriched";
-const enrichedBrand = Symbol("package.store.enriched");
+const enrichedBrand = Symbol("@package/store/enriched");
 const enrichedRecords = new WeakSet<object>();
 
 function markEnrichedRecord<T extends StoreRecord>(record: T): T {
