@@ -41,6 +41,7 @@
   "#u0w09xmglhng": "./src/runtime/memo.ts",
   "#wwir6gmfebbh": "./src/runtime/hydration.ts",
   "#xwy7fgl52hsw": "./src/core/validation.ts",
+  "#y17mn9lucufq": "./scripts/build/generated/tsconfig.mjs",
   "#y31thwq3bdf0": "./src/types.ts",
   "#zeealawo10hg": "./src/storage/postgres/validation.ts"
 }

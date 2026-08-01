@@ -1,5 +1,15 @@
 # Changelog
 
+All notable changes to `@trebired/store` will be documented here.
+
+This project follows semantic versioning once published.
+
+## 1.0.8
+
+- Updated Code Discipline configuration to the `imports` rule with dead import removal enabled.
+- Updated store log group metadata fallback so package-owned logs stay under the organization root when package metadata is unavailable.
+- Updated internal package dependency ranges to the current published sibling releases.
+
 ## 1.0.7
 
 - Aligned two internal Symbol keys (`enrichedBrand`, `BOOT_FOLLOW_UP_DISPATCH`) with the `@package/store/...` naming convention used by every other package's internal Symbols; they previously used an inconsistent dot-separated form.
