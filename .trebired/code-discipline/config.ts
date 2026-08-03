@@ -15,7 +15,7 @@ export default defineCodeDisciplineConfig({
     bannedPatterns: {
       patterns: [
         { value: "operlorn", allowedFiles: ["package.json"] },
-        { value: "trebired", allowedFiles: ["package.json", ".code-discipline/config.ts"] },
+        { value: "trebired", allowedFiles: ["package.json", ".trebired/code-discipline/config.ts"] },
       ],
     },
     maxFileLines: {

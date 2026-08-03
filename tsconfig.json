@@ -22,7 +22,7 @@
     "dist",
     ".tmp"
   ],
-  "extends": "./.code-discipline/generated/tsconfig.paths.json",
+  "extends": "./.trebired/code-discipline/generated/tsconfig.paths.json",
   "include": [
     "src/**/*.ts",
     "examples/**/*.ts",
