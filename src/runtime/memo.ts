@@ -4,12 +4,15 @@ import type {
   StoreRuntimeMemo,
   StoreRuntimeMemoOptions,
 } from "./types.js";
+import { stableStringify } from "#yfg488ybfy5n";
+
 type MemoEntry = {
   entity?: string;
   expiresAt: number;
   value: unknown;
   version: number;
 };
+
 const DEFAULT_IGNORED_KEYS = [
   "req",
   "res",
@@ -22,28 +25,29 @@ const DEFAULT_IGNORED_KEYS = [
   "cache",
   "signal",
 ];
+
 function createRuntimeMemo(options: StoreRuntimeMemoOptions = {}): StoreRuntimeMemo {
   const l1 = new Map<string, MemoEntry>();
-  const invalidated = new Map<string, MemoEntry & { invalidatedAt: number }>();
+  const invalidated = new Map<string, MemoEntry&{invalidatedAt:number}>();
   const inflight = new Map<string, Promise<unknown>>();
   const inflightEntity = new Map<string, string>();
   const versions = new Map<string, number>();
   const maxEntries = options.l1 === false ? 0 : options.l1?.maxEntries ?? 500;
   const ttlMs = options.l1 === false ? 0 : options.l1?.ttlMs ?? 30_000;
   const ignoredKeys = new Set([
-    ...DEFAULT_IGNORED_KEYS,
-    ...(options.ignoredKeys || []),
+      ...DEFAULT_IGNORED_KEYS,
+      ...(options.ignoredKeys || []),
   ]);
   const memo: StoreRuntimeMemo = {
     entityVersion: (entity) => versions.get(entity) || 0,
     get: (key) => getValue(key, l1, options, versions),
     inspectRead: (key, entity) => inspectRead(key, entity, l1, invalidated, inflight, versions),
-    invalidateEntity: async (entity) => {
+    invalidateEntity: async(entity) => {
       const version = applyInvalidation(entity, l1, invalidated, inflight, inflightEntity, versions);
       await options.redis?.publish("store:memo:invalidate", JSON.stringify({
-        entity,
-        invalidatedAt: Date.now(),
-        version,
+            entity,
+            invalidatedAt: Date.now(),
+            version,
       }));
     },
     keyForRead: (input) => stableStringify(normalizeReadKey(input, ignoredKeys, versions)),
@@ -51,23 +55,25 @@ function createRuntimeMemo(options: StoreRuntimeMemoOptions = {}): StoreRuntimeM
     set: (key, value, setOptions) => setValue(key, value, setOptions, l1, options, versions, ttlMs, maxEntries),
   };
   void options.redis?.subscribe?.("store:memo:invalidate", (message) => {
-    const payload = parseInvalidation(message);
-    applyInvalidation(payload.entity, l1, invalidated, inflight, inflightEntity, versions, payload.version, payload.invalidatedAt);
+      const payload = parseInvalidation(message);
+      applyInvalidation(payload.entity, l1, invalidated, inflight, inflightEntity, versions, payload.version, payload.invalidatedAt);
   });
   return memo;
 }
+
 async function getValue<T>(
   key: string,
   l1: Map<string, MemoEntry>,
   options: StoreRuntimeMemoOptions,
   versions: Map<string, number>,
-): Promise<T | null> {
+): Promise<T|null> {
   const local = readL1<T>(key, l1);
   if (local !== null) {
     return local;
   }
   return await readL2<T>(key, options, l1, versions);
 }
+
 async function setValue<T>(
   key: string,
   value: T,
@@ -81,6 +87,7 @@ async function setValue<T>(
   const entry = writeL1(key, value, options?.ttlMs ?? ttlMs, options?.entity, l1, versions, maxEntries);
   await config.l2?.set(key, entry);
 }
+
 async function runMemo<T>(
   key: string,
   load: () => T | Promise<T>,
@@ -115,16 +122,17 @@ async function runMemo<T>(
     inflightEntity.delete(key);
   }
 }
+
 function inspectRead(
   key: string,
   entity: string | undefined,
   l1: Map<string, MemoEntry>,
-  invalidated: Map<string, MemoEntry & { invalidatedAt: number }>,
+  invalidated: Map<string, MemoEntry&{invalidatedAt:number}>,
   inflight: Map<string, Promise<unknown>>,
   versions: Map<string, number>,
 ) {
   const invalidatedEntry = invalidated.get(key);
-  const hit = readL1(key, l1) === null ? "miss" as const : "l1" as const;
+  const hit = readL1(key, l1) === null ? "miss"as const : "l1"as const;
   return {
     cached: hit !== "miss",
     enabled: true,
@@ -137,6 +145,7 @@ function inspectRead(
     version: entity ? versions.get(entity) || 0 : 0,
   };
 }
+
 function readL1<T>(key: string, l1: Map<string, MemoEntry>): T | null {
   const entry = l1.get(key);
   if (!entry) {
@@ -148,6 +157,7 @@ function readL1<T>(key: string, l1: Map<string, MemoEntry>): T | null {
   }
   return entry.value as T;
 }
+
 function writeL1(
   key: string,
   value: unknown,
@@ -175,6 +185,7 @@ function writeL1(
   }
   return entry;
 }
+
 function clearEntityKeys(l1: Map<string, MemoEntry>, entity: string): void {
   for (const [key, value] of l1) {
     if (value.entity === entity) {
@@ -182,13 +193,14 @@ function clearEntityKeys(l1: Map<string, MemoEntry>, entity: string): void {
     }
   }
 }
+
 async function readL2<T>(
   key: string,
   options: StoreRuntimeMemoOptions,
   l1: Map<string, MemoEntry>,
   versions: Map<string, number>,
-): Promise<T | null> {
-  const remote = await options.l2?.get<MemoEntry | T>(key);
+): Promise<T|null> {
+  const remote = await options.l2?.get<MemoEntry|T>(key);
   if (!remote) {
     return null;
   }
@@ -208,10 +220,11 @@ async function readL2<T>(
   l1.set(key, remote);
   return remote.value as T;
 }
+
 function applyInvalidation(
   entity: string,
   l1: Map<string, MemoEntry>,
-  invalidated: Map<string, MemoEntry & { invalidatedAt: number }>,
+  invalidated: Map<string, MemoEntry&{invalidatedAt:number}>,
   inflight: Map<string, Promise<unknown>>,
   inflightEntity: Map<string, string>,
   versions: Map<string, number>,
@@ -224,18 +237,18 @@ function applyInvalidation(
     if (value.entity === entity) {
       l1.delete(key);
       invalidated.set(key, {
-        ...value,
-        invalidatedAt,
-        version: next,
+          ...value,
+          invalidatedAt,
+          version: next,
       });
     }
   }
   for (const [key, value] of invalidated) {
     if (value.entity === entity) {
       invalidated.set(key, {
-        ...value,
-        invalidatedAt,
-        version: next,
+          ...value,
+          invalidatedAt,
+          version: next,
       });
     }
   }
@@ -247,23 +260,25 @@ function applyInvalidation(
   }
   return next;
 }
+
 function createRedisMemoAdapter(input: RuntimeRedisMemoAdapterInput) {
   return {
-    delete: async (key: string) => {
+    delete: async(key: string) => {
       await input.del?.(key);
     },
-    get: async <T>(key: string) => input.getJson<T>(key),
-    publish: async (channel: string, message: string) => {
+    get: async <T > (key: string) => input.getJson<T>(key),
+    publish: async(channel: string, message: string) => {
       await input.publishJson?.(channel, JSON.parse(message));
     },
-    set: async <T>(key: string, value: T) => {
+    set: async <T > (key: string, value: T) => {
       await input.setJson(key, value);
     },
-    subscribe: async (channel: string, handler: (message: string) => void) => {
+    subscribe: async(channel: string, handler: (message: string) => void) => {
       await input.subscribeJson?.(channel, (payload) => handler(JSON.stringify(payload)));
     },
   };
 }
+
 function parseInvalidation(message: string): { entity: string; invalidatedAt: number; version?: number } {
   try {
     const value = JSON.parse(message) as Record<string, unknown>;
@@ -279,9 +294,11 @@ function parseInvalidation(message: string): { entity: string; invalidatedAt: nu
     };
   }
 }
+
 function isMemoEntry(value: unknown): value is MemoEntry {
-  return Boolean(value && typeof value === "object" && "expiresAt" in value && "value" in value);
+  return Boolean(value && typeof value === "object" && "expiresAt"in value && "value"in value);
 }
+
 function normalizeReadKey(
   input: RuntimeMemoReadKeyInput,
   ignoredKeys: Set<string>,
@@ -298,6 +315,7 @@ function normalizeReadKey(
     where: filterObject(input.where || {}, ignoredKeys),
   };
 }
+
 function filterUnknown(value: unknown, ignoredKeys: Set<string>): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => filterUnknown(item, ignoredKeys));
@@ -307,23 +325,13 @@ function filterUnknown(value: unknown, ignoredKeys: Set<string>): unknown {
   }
   return value;
 }
+
 function filterObject(value: Record<string, unknown>, ignoredKeys: Set<string>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value)
     .filter(([key]) => !ignoredKeys.has(key))
     .map(([key, item]) => [key, filterUnknown(item, ignoredKeys)]));
 }
-function stableStringify(value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(",")}]`;
-  }
-  if (value && typeof value === "object") {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`)
-      .join(",")}}`;
-  }
-  return JSON.stringify(value);
-}
+
 export {
   createRedisMemoAdapter,
   createRuntimeMemo,

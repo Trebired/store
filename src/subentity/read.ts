@@ -9,6 +9,7 @@ import type {
   SubEntityDefinition,
 } from "#y31thwq3bdf0";
 import { fail, ok } from "#44o0z05ifdgn";
+import { matchesStoreWhere } from "#yfg488ybfy5n";
 import { validateWhere } from "#xwy7fgl52hsw";
 
 interface SubEntityInternals {
@@ -18,7 +19,7 @@ interface SubEntityInternals {
     where: StoreWhere,
     context: StoreContext,
     options?: StoreReadOptions,
-  ): Promise<StoreResult<TRecord | null>>;
+  ): Promise<StoreResult<TRecord|null>>;
 }
 
 type ResolvedChildren = {
@@ -35,7 +36,7 @@ function createSubEntityReader(internals: SubEntityInternals): StoreSubEntityRea
   };
 }
 
-async function listSubEntities<TRecord extends StoreRecord = StoreRecord>(
+async function listSubEntities<TRecord extends StoreRecord=StoreRecord>(
   internals: SubEntityInternals,
   name: string,
   parentWhere: StoreWhere,
@@ -49,47 +50,47 @@ async function listSubEntities<TRecord extends StoreRecord = StoreRecord>(
 
   const { definition, parent, children } = resolved.data || emptyResolvedChildren();
   const base = definition.list ? await definition.list(children, {
-    context,
-    definition,
-    name,
-    parent,
+      context,
+      definition,
+      name,
+      parent,
   }) : children;
   return ok(await enrichChildren(definition, name, parent, base, context) as TRecord[], "Store sub-entity read completed.");
 }
 
-async function readSubEntityBy<TRecord extends StoreRecord = StoreRecord>(
+async function readSubEntityBy<TRecord extends StoreRecord=StoreRecord>(
   internals: SubEntityInternals,
   name: string,
   parentWhere: StoreWhere,
   where: StoreWhere,
   context: StoreContext,
   options?: StoreReadOptions,
-): Promise<StoreResult<TRecord | null>> {
+): Promise<StoreResult<TRecord|null>> {
   const whereError = validateWhere(name, where);
   if (whereError) {
-    return whereError as unknown as StoreResult<TRecord | null>;
+    return whereError as unknown as StoreResult<TRecord|null>;
   }
 
   const resolved = await resolveChildren(internals, name, parentWhere, context, options);
   if (!resolved.ok) {
-    return resolved as unknown as StoreResult<TRecord | null>;
+    return resolved as unknown as StoreResult<TRecord|null>;
   }
 
   const { definition, parent, children } = resolved.data || emptyResolvedChildren();
   const base = definition.list ? await definition.list(children, {
-    context,
-    definition,
-    name,
-    parent,
-  }) : children;
-  const found = definition.by
-    ? await definition.by(base, where, {
       context,
       definition,
       name,
       parent,
-    })
-    : base.find((row) => matchesWhere(row, where)) ?? null;
+  }) : children;
+  const found = definition.by
+  ? await definition.by(base, where, {
+      context,
+      definition,
+      name,
+      parent,
+  })
+  : base.find((row) => matchesWhere(row, where)) ?? null;
   const out = found ? await enrich(definition, name, parent, found, context) : null;
   return ok(out as TRecord | null, "Store sub-entity read completed.");
 }
@@ -108,10 +109,10 @@ async function countSubEntities(
 
   const { definition, parent, children } = (resolved.data || emptyResolvedChildren()) as ResolvedChildren;
   const value = definition.count ? await definition.count(children, {
-    context,
-    definition,
-    name,
-    parent,
+      context,
+      definition,
+      name,
+      parent,
   }) : children.length;
   return ok(value, "Store sub-entity count completed.");
 }
@@ -153,8 +154,8 @@ async function resolveChildren(
   const definition = internals.options.subEntities?.[name];
   if (!definition) {
     return fail("store-sub-entity-not-found", "Store sub-entity is not registered.", {
-      entity: name,
-    }, 404);
+        entity: name,
+      }, 404);
   }
 
   const contextError = definition.validateContext?.(context);
@@ -163,8 +164,8 @@ async function resolveChildren(
   }
 
   const parent = await internals.readBy(definition.parent, parentWhere, context, {
-    ...options,
-    mode: definition.sourceMode || options.mode || "full",
+      ...options,
+      mode: definition.sourceMode || options.mode || "full",
   });
   if (!parent.ok || !parent.data) {
     return parent as unknown as StoreResult<ResolvedChildren>;
@@ -173,9 +174,9 @@ async function resolveChildren(
   const value = parent.data[definition.childKey];
   const children = Array.isArray(value) ? value.filter(isStoreRecord) : [];
   return ok({
-    children,
-    definition,
-    parent: parent.data,
+      children,
+      definition,
+      parent: parent.data,
   });
 }
 
@@ -191,19 +192,17 @@ async function enrich(
   }
 
   return definition.enrich(child, {
-    context,
-    definition,
-    name,
-    parent,
+      context,
+      definition,
+      name,
+      parent,
   });
 }
 
-function matchesWhere(row: StoreRecord, where: StoreWhere): boolean {
-  return Object.entries(where).every(([key, value]) => row[key] === value);
-}
+const matchesWhere = matchesStoreWhere as(row: StoreRecord, where: StoreWhere) => boolean;
 
 function isStoreRecord(value: unknown): value is StoreRecord {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value) && typeof (value as StoreRecord).id === "string");
+  return Boolean(value && typeof value === "object" && !Array.isArray(value) && typeof(value as StoreRecord).id === "string");
 }
 
 export {

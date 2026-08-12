@@ -12,8 +12,17 @@ import type {
   StoreRuntimeSqlite,
   StoreRuntimeSqliteOptions,
 } from "./sqlite/types.js";
+import {
+  createRuntimeMetricEvent,
+  hashText,
+  runtimeQueryErrorCode,
+  summarizeSql,
+} from "./sql.js";
+import { ensureSqliteRecordTable } from "#bt4xhvf2n19p";
+
 const DEFAULT_SLOW_QUERY_MS = 250;
 const SQLITE_LOG_GROUP = buildStoreLogGroup("sqlite");
+
 function createRuntimeSqlite(
   options: StoreRuntimeSqliteOptions | undefined,
   entities: EntityRegistry,
@@ -24,11 +33,11 @@ function createRuntimeSqlite(
 } {
   const config = options || {};
   const client = options ? resolveDatabase(config, logger) : null;
-  let initPromise: Promise<void> | null = null;
+  let initPromise: Promise<void>|null = null;
   return {
     client,
     sqlite: {
-      init: async () => {
+      init: async() => {
         if (!client) return;
         initPromise = initPromise || initSqlite(client, entities, config, logger);
         return initPromise;
@@ -37,11 +46,12 @@ function createRuntimeSqlite(
     },
   };
 }
+
 function resolveDatabase(options: StoreRuntimeSqliteOptions, logger: NormalizedStoreLogger | null): SqliteDatabase {
   if (options.database) return options.database;
   if (options.path) {
     logger?.info(SQLITE_LOG_GROUP, "SQLite database configured.", {
-      path: options.path,
+        path: options.path,
     });
     return createLazyBunSqliteDatabase(options.path);
   }
@@ -49,22 +59,22 @@ function resolveDatabase(options: StoreRuntimeSqliteOptions, logger: NormalizedS
 }
 
 function createLazyBunSqliteDatabase(path: string): SqliteDatabase {
-  let promise: Promise<SqliteDatabase> | null = null;
-  const load = async () => {
+  let promise: Promise<SqliteDatabase>|null = null;
+  const load = async() => {
     promise = promise || import("bun:sqlite").then((mod) => new mod.Database(path) as SqliteDatabase);
     return promise;
   };
   return {
-    all: async <T>(sql: string, params: readonly unknown[] = []) => {
+    all: async <T > (sql: string, params: readonly unknown[] = []) => {
       const statement = (await load()).query?.(sql) as { all(...input: unknown[]): T[] } | undefined;
       return statement?.all(...params) || [];
     },
-    get: async <T>(sql: string, params: readonly unknown[] = []) => {
-      const statement = (await load()).query?.(sql) as { get?(...input: unknown[]): T | null | undefined } | undefined;
+    get: async <T > (sql: string, params: readonly unknown[] = []) => {
+      const statement = (await load()).query?.(sql) as { get ? (...input: unknown[]) : T | null | undefined } | undefined;
       return statement?.get?.(...params);
     },
-    run: async (sql: string, params: readonly unknown[] = []) => {
-      const statement = (await load()).query?.(sql) as { run?(...input: unknown[]): unknown } | undefined;
+    run: async(sql: string, params: readonly unknown[] = []) => {
+      const statement = (await load()).query?.(sql) as { run ? (...input: unknown[]) : unknown } | undefined;
       await statement?.run?.(...params);
       return {};
     },
@@ -91,10 +101,10 @@ async function runQuery<T>(
     return envelopeSuccess(result.rows, result.rowCount, config);
   } catch (error) {
     logger?.error(SQLITE_LOG_GROUP, "SQLite query failed.", {
-      caller,
-      error,
-      name: options?.name,
-      operation: options?.operation,
+        caller,
+        error,
+        name: options?.name,
+        operation: options?.operation,
     });
     void config.metrics?.(metricEvent(Date.now() - started, options, false, 0));
     return handleQueryError<T>(error, config);
@@ -106,7 +116,7 @@ async function queryClient<T>(
   sql: string,
   params: readonly unknown[],
   options: RuntimeSqliteQueryOptions | undefined,
-): Promise<{ rows: T[]; rowCount: number }> {
+): Promise<{rows:T[];rowCount:number}> {
   if ((options?.operation || inferOperation(sql)) === "read") {
     const rows = await sqliteAll<T>(client, sql, params);
     return {
@@ -129,23 +139,19 @@ async function initSqlite(
 ): Promise<void> {
   await runInternal(client, "select 1", [], logger, "SQLite first query succeeded.");
   for (const definition of Object.values(entities).filter((item) => item.storage === "sqlite")) {
-    await createEntityTable(client, definition.table);
+    await ensureSqliteRecordTable(client, tableName(definition.table), sqliteRun);
   }
   for (const index of options.indexes || []) {
     await createExpressionIndex(client, index.table, index.expression, index.name);
   }
   for (const migrate of options.migrations || []) {
     await migrate({
-      query: (sql, params = []) => runQuery(client, sql, params, {
-        allowLiterals: true,
-        operation: "migration",
-      }, options, logger),
+        query: (sql, params = []) => runQuery(client, sql, params, {
+            allowLiterals: true,
+            operation: "migration",
+          }, options, logger),
     });
   }
-}
-
-async function createEntityTable(client: SqliteDatabase, tableInput: string): Promise<void> {
-  await sqliteRun(client, `create table if not exists ${tableName(tableInput)} (id text primary key, record text not null)`, []);
 }
 
 async function createExpressionIndex(
@@ -262,29 +268,16 @@ function logQuerySuccess(
   const slow = elapsedMs >= (config.slowQueryMs ?? DEFAULT_SLOW_QUERY_MS);
   if (!slow && !config.logOperations) return;
   logger?.[slow ? "warn" : "info"](SQLITE_LOG_GROUP, slow ? "SQLite slow query completed." : "SQLite query completed.", {
-    caller,
-    elapsedMs,
-    name: options?.name,
-    operation: options?.operation,
-    params: params.length,
-    sql: summarizeSql(sql),
+      caller,
+      elapsedMs,
+      name: options?.name,
+      operation: options?.operation,
+      params: params.length,
+      sql: summarizeSql(sql),
   });
 }
 
-function metricEvent(
-  elapsedMs: number,
-  options: RuntimeSqliteQueryOptions | undefined,
-  success: boolean,
-  rowCount: number,
-) {
-  return {
-    elapsedMs,
-    name: options?.name,
-    operation: options?.operation,
-    rowCount,
-    success,
-  };
-}
+const metricEvent = createRuntimeMetricEvent;
 
 async function sqliteAll<T>(database: SqliteDatabase, sql: string, params: readonly unknown[]): Promise<T[]> {
   if (database.all) return database.all<T>(sql, [...params]);
@@ -300,7 +293,7 @@ async function sqliteRun(database: SqliteDatabase, sql: string, params: readonly
     return {};
   }
   const statement = database.query?.(sql) || database.prepare?.(sql);
-  const runnable = statement as { run?(...input: unknown[]): Promise<{ changes?: number }> | { changes?: number } } | undefined;
+  const runnable = statement as { run ? (...input: unknown[]) : Promise<{changes?:number}>| { changes?: number } } | undefined;
   if (!runnable?.run) throw new Error("SQLite database must provide run, query, or prepare methods.");
   return runnable.run(...params);
 }
@@ -321,27 +314,7 @@ function validateSqlFragment(value: string): void {
   }
 }
 
-function summarizeSql(sql: string): string {
-  return sql.replace(/\s+/gu, " ").trim().slice(0, 240);
-}
-
-function errorCode(error: unknown): string {
-  const message = error instanceof Error ? error.message.toLowerCase() : String(error || "").toLowerCase();
-  if (message.includes("empty")) return "query-empty";
-  if (message.includes("multiple")) return "query-multi-statement";
-  if (message.includes("comment")) return "query-comments-forbidden";
-  if (message.includes("placeholder")) return "query-placeholder-mismatch";
-  if (message.includes("literal")) return "query-literal-forbidden";
-  return "query-failed";
-}
-
-function hashText(value: string): string {
-  let hash = 0;
-  for (const char of value) {
-    hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
-  }
-  return Math.abs(hash).toString(36);
-}
+const errorCode = runtimeQueryErrorCode;
 
 export {
   createRuntimeSqlite,

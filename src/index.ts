@@ -1,6 +1,6 @@
 export { createStore } from "./core/store.js";
+export { createStoreRuntime } from "./runtime/store.js";
 export { createModeEnricherRegistry } from "./enricher/builder.js";
-export { createStoreRuntime } from "./runtime/store-runtime.js";
 export {
   computed,
   countBy,

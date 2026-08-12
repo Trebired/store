@@ -22,8 +22,8 @@ function createRecordViews<TViews extends RecordViewConfigMap>(
   views: TViews,
 ): RecordViewRegistry<TViews> {
   return Object.fromEntries(Object.entries(views).map(([name, config]) => [
-    name,
-    createRecordView(store, entity, config),
+        name,
+        createRecordView(store, entity, config),
   ])) as RecordViewRegistry<TViews>;
 }
 
@@ -37,8 +37,8 @@ function createRecordView(
     entity,
     by: (where, options) => readBy(store, entity, config, where, options),
     byId: (id, options) => readBy(store, entity, config, {
-      id,
-    }, options),
+        id,
+      }, options),
     create: (patch) => normalize(config, patch || {}),
     is: (row) => row[discriminatorField(config)] === config.kind,
     list: (options) => list(store, entity, config, options),
@@ -56,7 +56,7 @@ async function readBy<TRecord extends StoreRecord>(
   config: RecordViewConfig,
   where: StoreWhere,
   options?: RecordViewOptions,
-): Promise<StoreResult<TRecord | null>> {
+): Promise<StoreResult<TRecord|null>> {
   return store.entity.read.by<TRecord>(entity, withDiscriminator(config, where), context(options), options);
 }
 
@@ -67,9 +67,9 @@ async function list<TRecord extends StoreRecord>(
   options: RecordViewListOptions = {},
 ): Promise<StoreResult<TRecord[]>> {
   return store.entity.read.all<TRecord>(entity, context(options), {
-    ...options,
-    sort: options.sort || config.sort,
-    where: withDiscriminator(config, options.where || {}),
+      ...options,
+      sort: options.sort || config.sort,
+      where: withDiscriminator(config, options.where || {}),
   });
 }
 
@@ -80,20 +80,20 @@ async function patchBy(
   where: StoreWhere,
   patch: Partial<StoreRecord>,
   options?: RecordViewWriteOptions,
-): Promise<StoreResult<StoreRecord | null>> {
+): Promise<StoreResult<StoreRecord|null>> {
   const current = await store.entity.read.by(entity, withDiscriminator(config, where), context(options), {
-    cacheBypass: true,
-    mode: "raw",
-    scope: options?.scope,
+      cacheBypass: true,
+      mode: "raw",
+      scope: options?.scope,
   });
   if (!current.ok || !current.data) {
     return current;
   }
 
   const next = normalize(config, {
-    ...current.data,
-    ...patch,
-    id: current.data.id,
+      ...current.data,
+      ...patch,
+      id: current.data.id,
   });
   return store.entity.write.put(entity, context(options), next, options);
 }
@@ -106,11 +106,11 @@ async function remove(
   options?: RecordViewWriteOptions,
 ): Promise<StoreResult<boolean>> {
   const current = await store.entity.read.by(entity, withDiscriminator(config, {
-    id,
-  }), context(options), {
-    cacheBypass: true,
-    mode: "raw",
-    scope: options?.scope,
+        id,
+    }), context(options), {
+      cacheBypass: true,
+      mode: "raw",
+      scope: options?.scope,
   });
   if (!current.ok || !current.data) {
     return current.ok ? ok(false, "Record view row was already absent.") : current as unknown as StoreResult<boolean>;
@@ -134,25 +134,25 @@ async function upsertUnique<TRecord extends StoreRecord>(
 
   const unique = where.data as StoreWhere;
   const current = await store.entity.read.by<TRecord>(entity, withDiscriminator(config, unique), context(options), {
-    cacheBypass: true,
-    mode: "raw",
-    scope: options?.scope,
+      cacheBypass: true,
+      mode: "raw",
+      scope: options?.scope,
   });
   if (!current.ok) {
     return current as unknown as StoreResult<TRecord>;
   }
 
   const next = current.data ? normalize(config, {
-    ...current.data,
-    ...normalized,
-    id: current.data.id,
+      ...current.data,
+      ...normalized,
+      id: current.data.id,
   }) as TRecord : normalized;
   return store.entity.write.put<TRecord>(entity, context(options), next, options);
 }
 
 function normalize<TRecord extends StoreRecord>(
   config: RecordViewConfig,
-  row: Partial<TRecord> | TRecord,
+  row: Partial<TRecord>|TRecord,
 ): TRecord {
   const next = {
     ...defaults(config.defaults, row as Partial<StoreRecord>),
@@ -184,7 +184,7 @@ function uniqueWhere(config: RecordViewConfig, row: StoreRecord): StoreResult<St
     const value = row[field];
     if (value === undefined || value === null || value === "") {
       return fail("store-invalid-where", "Record view unique field is missing.", {
-        field,
+          field,
       });
     }
     where[field] = value;
@@ -205,7 +205,7 @@ function discriminatorField(config: RecordViewConfig): string {
 }
 
 function context(options?: {
-  context?: StoreContext;
+    context?: StoreContext;
 }): StoreContext {
   return options?.context || {};
 }

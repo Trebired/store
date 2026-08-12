@@ -30,23 +30,23 @@ async function main() {
 async function prepareDist() {
   const aliasMap = await readAliasMap();
   await fs.cp(path.join(distDir, "src"), distDir, {
-    force: true,
-    recursive: true,
+      force: true,
+      recursive: true,
   });
   const files = await collectDistFiles();
 
-  await Promise.all(files.map(async (filePath) => {
-    const original = await fs.readFile(filePath, "utf8");
-    const rewritten = rewriteAliasImports(original, filePath, aliasMap);
-    if (rewritten !== original) {
-      await fs.writeFile(filePath, rewritten);
-    }
+  await Promise.all(files.map(async(filePath) => {
+        const original = await fs.readFile(filePath, "utf8");
+        const rewritten = rewriteAliasImports(original, filePath, aliasMap);
+        if (rewritten !== original) {
+          await fs.writeFile(filePath, rewritten);
+        }
   }));
 }
 
 async function backupPackageJson() {
   await fs.mkdir(tempDir, {
-    recursive: true,
+      recursive: true,
   });
   await fs.copyFile(packageJsonPath, backupPath);
 }
@@ -60,7 +60,7 @@ async function restorePackageJson() {
   const original = await fs.readFile(backupPath, "utf8");
   await fs.writeFile(packageJsonPath, original);
   await fs.rm(backupPath, {
-    force: true,
+      force: true,
   });
 }
 
@@ -99,7 +99,7 @@ async function collectDistFiles() {
   while (stack.length > 0) {
     const current = stack.pop();
     const entries = await fs.readdir(current, {
-      withFileTypes: true,
+        withFileTypes: true,
     });
     for (const entry of entries) {
       const nextPath = path.join(current, entry.name);
@@ -116,13 +116,13 @@ async function collectDistFiles() {
 
 function rewriteAliasImports(source, filePath, importsMap) {
   return source.replace(/(["'])(#[^"']+)\1/g, (match, quote, alias) => {
-    const target = importsMap[alias];
-    const compiledPath = target ? resolveCompiledTarget(String(target)) : null;
-    if (!compiledPath) {
-      return match;
-    }
+      const target = importsMap[alias];
+      const compiledPath = target ? resolveCompiledTarget(String(target)) : null;
+      if (!compiledPath) {
+        return match;
+      }
 
-    return `${quote}${toRelativeImport(path.relative(path.dirname(filePath), compiledPath))}${quote}`;
+      return `${quote}${toRelativeImport(path.relative(path.dirname(filePath), compiledPath))}${quote}`;
   });
 }
 

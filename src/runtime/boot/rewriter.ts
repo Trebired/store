@@ -1,4 +1,10 @@
 import { readBootBoolean } from "./followups.js";
+import {
+  getPath,
+  identity,
+  isPlainObject,
+  isStoreRecord,
+} from "#yfg488ybfy5n";
 import type {
   RuntimeBootActionContext,
   RuntimeRewrite,
@@ -11,7 +17,7 @@ import type {
 type BootRecordTransform = (
   record: StoreRecord,
   context: RuntimeBootActionContext,
-) => MaybePromise<StoreRecord | null | undefined | void>;
+) => MaybePromise<StoreRecord|null|undefined|void>;
 
 interface BootStringFieldOptions {
   fallbackFrom?: string | readonly string[];
@@ -45,19 +51,19 @@ interface BootSlugFieldOptions {
 }
 
 function createBootRewriter(records: Record<string, RuntimeRewrite>): RuntimeRewrite {
-  return async (record, context) => {
+  return async(record, context) => {
     const rewrite = records[context.entity];
     return rewrite ? rewrite(record, context) : record;
   };
 }
 
 function bootRecord(transforms: readonly BootRecordTransform[]): RuntimeRewrite {
-  return async (record, context) => {
-    if (!isRecord(record)) return record;
+  return async(record, context) => {
+    if (!isStoreRecord(record)) return record;
     let current = cloneRecord(record);
     for (const transform of transforms) {
       const next = await transform(current, context);
-      if (next && isRecord(next)) {
+      if (isStoreRecord(next)) {
         current = next;
       }
     }
@@ -83,7 +89,7 @@ function stringField(field: string, options: BootStringFieldOptions = {}): BootR
 function numberField(field: string, options: BootNumberFieldOptions = {}): BootRecordTransform {
   return (record) => {
     const value = Number(getPath(record, field));
-    const fallback = options.default ?? options.fallback;
+    const fallback = options.default ??options.fallback;
     setPath(record, field, Number.isFinite(value) ? value : fallback ?? 0);
     return record;
   };
@@ -91,7 +97,7 @@ function numberField(field: string, options: BootNumberFieldOptions = {}): BootR
 
 function booleanField(field: string, options: BootBooleanFieldOptions = {}): BootRecordTransform {
   return (record) => {
-    setPath(record, field, readBootBoolean(record, field, options.default ?? options.fallback ?? false));
+    setPath(record, field, readBootBoolean(record, field, options.default ??options.fallback ?? false));
     return record;
   };
 }
@@ -108,7 +114,7 @@ function objectField(field: string, options: BootObjectFieldOptions = {}): BootR
 function arrayField(field: string, options: BootArrayFieldOptions = {}): BootRecordTransform {
   return (record) => {
     const value = getPath(record, field);
-    setPath(record, field, Array.isArray(value) ? [...value] : [...(options.default || [])]);
+    setPath(record, field, Array.isArray(value) ? [...value] : [...(options.default ||[])]);
     return record;
   };
 }
@@ -173,9 +179,9 @@ function booleanPolicyDefaults(path: string, defaults: Record<string, boolean>):
     const policy: Record<string, unknown> = isPlainObject(current) ? { ...current } : {};
     for (const [key, value] of Object.entries(defaults)) {
       policy[key] = readBootBoolean({
-        ...policy,
-        id: "",
-      }, key, value);
+          ...policy,
+          id: "",
+        }, key, value);
     }
     setPath(record, path, policy);
     return record;
@@ -192,15 +198,13 @@ function slugField(target: string, sourceFields: readonly string[], options: Boo
   };
 }
 
-function customTransform(transform: BootRecordTransform): BootRecordTransform {
-  return transform;
-}
+const customTransform = identity as(transform: BootRecordTransform) => BootRecordTransform;
 
 function findStringFallback(record: StoreRecord, options: BootStringFieldOptions): string | undefined {
   const fields = typeof options.fallbackFrom === "string" ? [options.fallbackFrom] : options.fallbackFrom || [];
   const fallback = fields.map((field) => cleanString(getPath(record, field))).find(Boolean)
-    ?? cleanString(options.default)
-    ?? cleanString(options.fallback);
+  ??cleanString(options.default)
+  ??cleanString(options.fallback);
   return fallback ? `${options.prefix || ""}${fallback}` : undefined;
 }
 
@@ -211,12 +215,6 @@ function uniqueStrings(values: readonly unknown[]): string[] {
     if (text) out.add(text);
   }
   return [...out];
-}
-
-function getPath(row: StoreRecord, path: string): unknown {
-  return path.split(".").reduce<unknown>((current, key) => {
-    return current && typeof current === "object" ? (current as Record<string, unknown>)[key] : undefined;
-  }, row);
 }
 
 function setPath(row: StoreRecord, path: string, value: unknown): void {
@@ -236,8 +234,8 @@ function mergeDefaults(current: Record<string, unknown>, defaults: Record<string
   const out = cloneValue(defaults);
   for (const [key, value] of Object.entries(current)) {
     out[key] = isPlainObject(value) && isPlainObject(out[key])
-      ? mergeDefaults(value, out[key])
-      : cloneValue(value);
+    ? mergeDefaults(value, out[key])
+    : cloneValue(value);
   }
   return out;
 }
@@ -262,24 +260,16 @@ function cleanString(value: unknown): string | undefined {
 
 function toSlug(value: string, separator: string): string {
   return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, separator)
-    .replace(new RegExp(`${escapeRegExp(separator)}+`, "g"), separator)
-    .replace(new RegExp(`^${escapeRegExp(separator)}|${escapeRegExp(separator)}$`, "g"), "");
+  .normalize("NFKD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, separator)
+  .replace(new RegExp(`${escapeRegExp(separator)}+`, "g"), separator)
+  .replace(new RegExp(`^${escapeRegExp(separator)}|${escapeRegExp(separator)}$`, "g"), "");
 }
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function isRecord(value: unknown): value is StoreRecord {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 export {

@@ -25,10 +25,10 @@ function resolveLogger(
   }
 
   return resolveSharedLogger({
-    adapter,
-    fallback: "console",
-    logger,
-    source: STORE_PACKAGE_NAME,
+      adapter,
+      fallback: "console",
+      logger,
+      source: STORE_PACKAGE_NAME,
   }) as NormalizedStoreLogger;
 }
 

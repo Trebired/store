@@ -6,7 +6,13 @@ import type {
   StoreRecord,
   StoreWhere,
 } from "#y31thwq3bdf0";
+import { isPlainObject } from "#yfg488ybfy5n";
 import { quoteIdentifier, validateSqlIdentifier } from "#zeealawo10hg";
+import {
+  applyStorageContext,
+  buildStorageWhere,
+} from "#9193g93dz8pe";
+import { ensureSqliteRecordTable } from "./table.js";
 import type { SqliteDatabase, SqliteJsonAdapterOptions } from "./types.js";
 
 type Row = {
@@ -19,30 +25,30 @@ const JSON_FIELD = /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/u;
 function createSqliteJsonStorageAdapter(options: SqliteJsonAdapterOptions): StorageAdapter {
   return {
     all: (entity, context, readOptions) => queryMany(options.database, entity, {}, context, readOptions),
-    by: async (entity, where, context, readOptions) => {
+    by: async(entity, where, context, readOptions) => {
       const rows = await queryMany(options.database, entity, where, context, readOptions, 1);
       return rows[0] ?? null;
     },
     byIds: (entity, ids, context, readOptions) => queryMany(options.database, entity, { id: ids }, context, readOptions),
-    count: async (entity, context, readOptions) => {
+    count: async(entity, context, readOptions) => {
       const sql = buildSelectSql(entity, {}, context, readOptions, "count(*) as count", undefined, false);
-      const row = await sqliteGet<{ count: number }>(options.database, sql.text, sql.params);
+      const row = await sqliteGet<{count:number}>(options.database, sql.text, sql.params);
       return Number(row?.count || 0);
     },
-    hasAny: async (entity, context, readOptions) => {
+    hasAny: async(entity, context, readOptions) => {
       const rows = await queryMany(options.database, entity, {}, context, readOptions, 1);
       return rows.length > 0;
     },
-    put: async (entity, context, record) => {
+    put: async(entity, context, record) => {
       const stored = applyContext(record, entity, context);
       const sql = `insert into ${tableName(entity)} (id, record) values (?, ?)
-        on conflict(id) do update set record = excluded.record`;
+      on conflict(id) do update set record = excluded.record`;
       await sqliteRun(options.database, sql, [stored.id, stringifyRecord(stored)]);
       return stored;
     },
     remove: (entity, context, id, readOptions) => removeOne(options.database, entity, context, id, readOptions),
     removeMany: (entity, context, ids, readOptions) => removeMany(options.database, entity, context, ids, readOptions),
-    ensureReadyFor: (entity) => ensureReadyFor(options.database, entity),
+    ensureReadyFor: (entity) => ensureSqliteRecordTable(options.database, tableName(entity), sqliteRun),
   };
 }
 
@@ -54,8 +60,8 @@ async function removeOne(
   readOptions?: StorageReadOptions,
 ): Promise<boolean> {
   const result = await deleteRows(database, entity, context, {
-    id,
-  }, readOptions);
+      id,
+    }, readOptions);
   return result.length > 0;
 }
 
@@ -67,8 +73,8 @@ async function removeMany(
   readOptions?: StorageReadOptions,
 ) {
   const result = await deleteRows(database, entity, context, {
-    id: ids,
-  }, readOptions);
+      id: ids,
+    }, readOptions);
   return {
     ids,
     missing: ids.length - result.length,
@@ -83,18 +89,14 @@ async function deleteRows(
   context: StoreContext,
   whereInput: StoreWhere,
   readOptions?: StorageReadOptions,
-): Promise<{ id: string }[]> {
-  const where = buildWhere(entity, whereInput, context, readOptions);
+): Promise<{id:string}[]> {
+  const where = buildStorageWhere(entity, whereInput, context, readOptions, pushJsonFilter);
   const select = `select id from ${tableName(entity)} ${where.sql}`;
-  const rows = await sqliteAll<{ id: string }>(database, select, where.params);
+  const rows = await sqliteAll<{id:string}>(database, select, where.params);
   if (rows.length === 0) return [];
   const placeholders = rows.map(() => "?").join(", ");
   await sqliteRun(database, `delete from ${tableName(entity)} where id in (${placeholders})`, rows.map((row) => row.id));
   return rows;
-}
-
-async function ensureReadyFor(database: SqliteDatabase, entity: ResolvedEntity): Promise<void> {
-  await sqliteRun(database, `create table if not exists ${tableName(entity)} (id text primary key, record text not null)`, []);
 }
 
 async function queryMany(
@@ -122,43 +124,13 @@ function buildSelectSql(
   params: unknown[];
   text: string;
 } {
-  const clause = buildWhere(entity, where, context, options);
+  const clause = buildStorageWhere(entity, where, context, options, pushJsonFilter);
   const order = includeSort ? buildOrderBy(options?.sort || []) : "";
   const bounded = normalizeLimit(limit ?? options?.limit);
   const limitClause = bounded === null ? "" : ` limit ${bounded}`;
   return {
     params: clause.params,
     text: `select ${select} from ${tableName(entity)} ${clause.sql}${order}${limitClause}`,
-  };
-}
-
-function buildWhere(
-  entity: ResolvedEntity,
-  where: StoreWhere,
-  context: StoreContext,
-  options?: StorageReadOptions,
-): {
-  params: unknown[];
-  sql: string;
-} {
-  const parts: string[] = [];
-  const params: unknown[] = [];
-
-  for (const [field, value] of Object.entries(options?.where || {})) {
-    pushJsonFilter(parts, params, field, value);
-  }
-  for (const [field, value] of Object.entries(where)) {
-    pushJsonFilter(parts, params, field, value);
-  }
-  if (options?.scope !== "all") {
-    for (const key of entity.definition.context || []) {
-      pushJsonFilter(parts, params, key, context[key]);
-    }
-  }
-
-  return {
-    params,
-    sql: parts.length ? `where ${parts.join(" and ")}` : "",
   };
 }
 
@@ -198,11 +170,11 @@ function pushIdFilter(parts: string[], params: unknown[], value: unknown): void 
 function buildOrderBy(sort: readonly string[]): string {
   if (sort.length === 0) return "";
   const parts = sort.map((spec) => {
-    const [field, direction] = spec.split(":");
-    if (direction !== "asc" && direction !== "desc") {
-      throw new Error("SQLite JSON adapter sort direction must be asc or desc.");
-    }
-    return `json_extract(record, '${jsonPath(field || "")}') ${direction}`;
+      const [field, direction] = spec.split(":");
+      if (direction !== "asc" && direction !== "desc") {
+        throw new Error("SQLite JSON adapter sort direction must be asc or desc.");
+      }
+      return `json_extract(record, '${jsonPath(field || "")}') ${direction}`;
   });
   return ` order by ${parts.join(", ")}`;
 }
@@ -228,15 +200,7 @@ function jsonPath(field: string): string {
   return `$.${field.split(".").join(".")}`;
 }
 
-function applyContext(record: StoreRecord, entity: ResolvedEntity, context: StoreContext): StoreRecord {
-  const out = {
-    ...record,
-  };
-  for (const key of entity.definition.context || []) {
-    out[key] = context[key];
-  }
-  return out;
-}
+const applyContext = applyStorageContext;
 
 function normalizeRow(row: Row): StoreRecord {
   try {
@@ -270,7 +234,7 @@ async function sqliteAll<T>(database: SqliteDatabase, sql: string, params: reado
   return statement.all(...params);
 }
 
-async function sqliteGet<T>(database: SqliteDatabase, sql: string, params: readonly unknown[]): Promise<T | null | undefined> {
+async function sqliteGet<T>(database: SqliteDatabase, sql: string, params: readonly unknown[]): Promise<T|null|undefined> {
   if (database.get) return database.get<T>(sql, [...params]);
   const statement = prepare<T>(database, sql);
   if (statement.get) return statement.get(...params);
@@ -301,14 +265,10 @@ function prepare<T>(database: SqliteDatabase, sql: string) {
     throw new Error("SQLite database must provide query, prepare, all/get, or run methods.");
   }
   return statement as {
-    all(...params: unknown[]): Promise<T[]> | T[];
-    get?(...params: unknown[]): Promise<T | null | undefined> | T | null | undefined;
-    run?(...params: unknown[]): Promise<unknown> | unknown;
+    all(...params: unknown[]): Promise<T[]>|T[];
+    get ? (...params: unknown[]) : Promise<T|null|undefined>|T | null | undefined;
+    run ? (...params: unknown[]) : Promise<unknown>|unknown;
   };
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 export {

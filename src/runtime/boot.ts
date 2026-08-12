@@ -5,6 +5,10 @@ import {
   bootFollowUpSkipped,
   bootFollowUpSucceeded,
 } from "./boot/followups.js";
+import {
+  getPath,
+  stableStringify,
+} from "#yfg488ybfy5n";
 import type {
   RuntimeBootAction,
   RuntimeBootCondition,
@@ -22,7 +26,7 @@ import type {
 import type { StoreContext, StoreRecord } from "#y31thwq3bdf0";
 
 function createBootRunner(store: Pick<Store, "entity">, options: StoreRuntimeBootOptions = {}) {
-  return async (): Promise<RuntimeBootResult> => {
+  return async(): Promise<RuntimeBootResult> => {
     const result = emptyResult();
     for (const fix of options.fixes || []) {
       await runFix(store, fix, options, result);
@@ -47,13 +51,13 @@ async function runFix(
     ...(fix.context || {}),
   };
   const rows = await store.entity.read.all(fix.entity, context, {
-    mode: "raw",
-    scope: "all",
+      mode: "raw",
+      scope: "all",
   });
   if (!rows.ok) {
     result.failures.push({
-      entity: fix.entity,
-      message: rows.message,
+        entity: fix.entity,
+        message: rows.message,
     });
     return;
   }
@@ -79,8 +83,8 @@ async function runActions(
   let changed = false;
   if (!current.id) {
     result.failures.push({
-      entity: fix.entity,
-      message: "Store boot record is missing an id.",
+        entity: fix.entity,
+        message: "Store boot record is missing an id.",
     });
     return;
   }
@@ -89,8 +93,8 @@ async function runActions(
     const skip = skipReason(action, options);
     if (skip) {
       result.skipped.push({
-        entity: fix.entity,
-        reason: skip,
+          entity: fix.entity,
+          reason: skip,
       });
       continue;
     }
@@ -108,16 +112,16 @@ async function runActions(
 
   if (changed) {
     const saved = await store.entity.write.put(fix.entity, context, current, {
-      scope: "all",
+        scope: "all",
     });
     if (saved.ok) {
       result.changedCount += 1;
       result.entities[fix.entity].changed += 1;
     } else {
       result.failures.push({
-        entity: fix.entity,
-        id: current.id,
-        message: saved.message,
+          entity: fix.entity,
+          id: current.id,
+          message: saved.message,
       });
     }
   }
@@ -133,9 +137,9 @@ async function applyAction(
   let next = structuredClone(row);
   if (action.rewrite) {
     next = await resolveRewrite(rewrites, entity, action.rewrite)?.(next, {
-      config: action,
-      context,
-      entity,
+        config: action,
+        context,
+        entity,
     }) ?? next;
   }
   for (const [field, value] of Object.entries(action.set || {})) {
@@ -153,7 +157,7 @@ async function applyAction(
 }
 
 function matchesAction(row: StoreRecord, action: RuntimeBootAction): boolean {
-  if (action.if && !matchesCondition(row, action.if)) {
+  if (action.if &&!matchesCondition(row, action.if)) {
     return false;
   }
   if (action.if_all?.some((condition) => !matchesCondition(row, condition))) {
@@ -164,7 +168,7 @@ function matchesAction(row: StoreRecord, action: RuntimeBootAction): boolean {
 
 function matchesCondition(row: StoreRecord, condition: RuntimeBootCondition): boolean {
   const value = getPath(row, condition.field);
-  if ("equals" in condition && value !== condition.equals) {
+  if ("equals"in condition && value !== condition.equals) {
     return false;
   }
   if (condition.equals_any && !condition.equals_any.some((item) => String(item) === String(value))) {
@@ -195,43 +199,43 @@ async function runFollowUps(options: StoreRuntimeBootOptions, result: RuntimeBoo
     try {
       if (!handler) {
         result.followUps.push(bootFollowUpSkipped(queued.call, queued.entity, {
-          message: "Boot follow-up call is not registered.",
-          recordId: queued.recordId,
+              message: "Boot follow-up call is not registered.",
+              recordId: queued.recordId,
         }));
         continue;
       }
       const outcome = await handler({
-        call: queued.call,
-        config: queued.config,
-        entity: queued.entity,
-        record: queued.record || {
-          id: queued.recordId,
-        },
+          call: queued.call,
+          config: queued.config,
+          entity: queued.entity,
+          record: queued.record || {
+            id: queued.recordId,
+          },
       });
       result.followUps.push(normalizeFollowUpOutcome(outcome, queued));
     } catch (error) {
       result.followUps.push(bootFollowUpFailed(queued.call, queued.entity, error, queued.recordId));
       result.failures.push({
-        entity: queued.entity,
-        id: queued.recordId,
-        message: error instanceof Error ? error.message : String(error),
+          entity: queued.entity,
+          id: queued.recordId,
+          message: error instanceof Error ? error.message : String(error),
       });
     }
   }
 }
 
 function resolveFollowUp(options: StoreRuntimeBootOptions, call: string): RuntimeFollowUp | undefined {
-  const registry = options.followUps as (StoreRuntimeBootOptions["followUps"] & {
-    [BOOT_FOLLOW_UP_DISPATCH]?: RuntimeFollowUp;
+  const registry = options.followUps as(StoreRuntimeBootOptions["followUps"]& {
+      [BOOT_FOLLOW_UP_DISPATCH]?: RuntimeFollowUp;
   }) | undefined;
   return registry?.[call] || registry?.[BOOT_FOLLOW_UP_DISPATCH];
 }
 
 function normalizeFollowUpOutcome(
-  outcome: void | RuntimeBootFollowUpOutcome,
+  outcome: void |RuntimeBootFollowUpOutcome,
   queued: RuntimeQueuedFollowUp,
 ): RuntimeBootFollowUpOutcome {
-  if (outcome && typeof outcome === "object" && "skipped" in outcome) {
+  if (outcome && typeof outcome === "object" && "skipped"in outcome) {
     return {
       recordId: queued.recordId,
       ...outcome,
@@ -248,11 +252,11 @@ function queueFollowUps(
 ): void {
   for (const config of followUps) {
     result.queuedFollowUps.push({
-      call: config.call,
-      config: config.config,
-      entity,
-      record: structuredClone(row),
-      recordId: row.id,
+        call: config.call,
+        config: config.config,
+        entity,
+        record: structuredClone(row),
+        recordId: row.id,
     });
   }
 }
@@ -271,16 +275,10 @@ function skipReason(action: RuntimeBootAction, options: StoreRuntimeBootOptions)
 }
 
 function resolveValue(value: unknown, context: StoreContext): unknown {
-  if (value && typeof value === "object" && !Array.isArray(value) && "ctx" in value) {
+  if (value && typeof value === "object" && !Array.isArray(value) && "ctx"in value) {
     return context[String((value as { ctx: unknown }).ctx)] ?? "";
   }
   return value;
-}
-
-function getPath(row: StoreRecord, path: string): unknown {
-  return path.split(".").reduce<unknown>((current, key) => {
-    return current && typeof current === "object" ? (current as Record<string, unknown>)[key] : undefined;
-  }, row);
 }
 
 function setPath(row: StoreRecord, path: string, value: unknown): void {
@@ -323,19 +321,6 @@ function emptyResult(): RuntimeBootResult {
     queuedFollowUps: [] as RuntimeQueuedFollowUp[],
     skipped: [],
   };
-}
-
-function stableStringify(value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(",")}]`;
-  }
-  if (value && typeof value === "object") {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`)
-      .join(",")}}`;
-  }
-  return JSON.stringify(value);
 }
 
 export {

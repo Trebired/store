@@ -12,17 +12,27 @@ function quoteIdentifier(value: string): string {
   return `"${value.replace(/"/gu, "\"\"")}"`;
 }
 
-function validateSqlIdentifier(value: string): StoreResult<true> | null {
+function validateSqlIdentifier(value: string): StoreResult<true>|null {
   if (!IDENTIFIER.test(value)) {
     return fail("store-sql-identifier", "Invalid SQL identifier.", {
-      field: value,
+        field: value,
     });
   }
 
   return null;
 }
 
-function validatePlaceholderOrder(sql: string, params: unknown[]): StoreResult<true> | null {
+function validatePostgresSchema(schemaInput?: string): string {
+  const schema = schemaInput || "public";
+  const error = validateSqlIdentifier(schema);
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return schema;
+}
+
+function validatePlaceholderOrder(sql: string, params: unknown[]): StoreResult<true>|null {
   const placeholders = [...sql.matchAll(PLACEHOLDER)].map((match) => Number(match[1]));
   const expected = [...new Set(placeholders)].sort((a, b) => a - b);
 
@@ -41,6 +51,7 @@ function validatePlaceholderOrder(sql: string, params: unknown[]): StoreResult<t
 
 export {
   quoteIdentifier,
+  validatePostgresSchema,
   validatePlaceholderOrder,
   validateSqlIdentifier,
 };

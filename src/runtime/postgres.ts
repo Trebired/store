@@ -8,14 +8,26 @@ import type {
   StoreRuntimePostgres,
   StoreRuntimePostgresOptions,
 } from "./types.js";
-import { quoteIdentifier, validateSqlIdentifier } from "#zeealawo10hg";
+import {
+  quoteIdentifier,
+  validatePostgresSchema,
+  validateSqlIdentifier,
+} from "#zeealawo10hg";
 import {
   detectQueryCaller,
   redactDatabaseUrl,
   validateRuntimePostgresQuery,
 } from "./postgres-safety.js";
+import {
+  createRuntimeMetricEvent,
+  hashText,
+  runtimeQueryErrorCode,
+  summarizeSql,
+} from "./sql.js";
+
 const DEFAULT_SLOW_QUERY_MS = 250;
 const POSTGRES_LOG_GROUP = buildStoreLogGroup("postgres");
+
 function createRuntimePostgres(
   options: StoreRuntimePostgresOptions | undefined,
   entities: EntityRegistry,
@@ -26,15 +38,15 @@ function createRuntimePostgres(
   schema: string;
 } {
   const config = options || {};
-  const schema = validateSchema(config.schema);
+  const schema = validatePostgresSchema(config.schema);
   const client = config.client || createPool(config, logger);
-  let initPromise: Promise<void> | null = null;
+  let initPromise: Promise<void>|null = null;
   const postgres = {
     init: () => {
       initPromise = initPromise || initPostgres(client, schema, entities, config, logger);
       return initPromise;
     },
-    query: <T = Record<string, unknown>>(sql: string, params: readonly unknown[] = [], queryOptions?: RuntimePostgresQueryOptions) => {
+    query: <T = Record < string, unknown >> (sql: string, params: readonly unknown[] = [], queryOptions?: RuntimePostgresQueryOptions) => {
       return runQuery<T>(client, sql, params, queryOptions, config, logger);
     },
   };
@@ -45,6 +57,7 @@ function createRuntimePostgres(
     schema,
   };
 }
+
 function createStorageClient(
   client: RuntimePostgresClient,
   config: StoreRuntimePostgresOptions,
@@ -52,25 +65,27 @@ function createStorageClient(
 ): PostgresStoreClient {
   return {
     query: (sql, params = []) => runQuery(client, sql, params, {
-      allowLiterals: true,
-      operation: sql.trim().toLowerCase().startsWith("select") ? "read" : "write",
-    }, config, logger),
+        allowLiterals: true,
+        operation: sql.trim().toLowerCase().startsWith("select") ? "read" : "write",
+      }, config, logger),
   };
 }
+
 function createPool(options: StoreRuntimePostgresOptions, logger: NormalizedStoreLogger | null): RuntimePostgresClient {
   const pool = new Pool({
-    connectionString: options.databaseUrl,
-    connectionTimeoutMillis: options.pool?.connectionTimeoutMs,
-    idleTimeoutMillis: options.pool?.idleTimeoutMs,
-    max: options.pool?.max,
-    statement_timeout: options.pool?.statementTimeoutMs,
+      connectionString: options.databaseUrl,
+      connectionTimeoutMillis: options.pool?.connectionTimeoutMs,
+      idleTimeoutMillis: options.pool?.idleTimeoutMs,
+      max: options.pool?.max,
+      statement_timeout: options.pool?.statementTimeoutMs,
   });
-    logger?.info(POSTGRES_LOG_GROUP, "Postgres pool created.", {
-    databaseUrl: redactDatabaseUrl(options.databaseUrl),
-    pool: options.pool || {},
+  logger?.info(POSTGRES_LOG_GROUP, "Postgres pool created.", {
+      databaseUrl: redactDatabaseUrl(options.databaseUrl),
+      pool: options.pool || {},
   });
   return pool;
 }
+
 async function runQuery<T>(
   client: RuntimePostgresClient,
   sql: string,
@@ -88,19 +103,20 @@ async function runQuery<T>(
   try {
     const result = await queryClient<T>(client, sql, params, caller, options, config, logger);
     logQuerySuccess(logger, sql, params, Date.now() - started, caller, options, config);
-    void config.metrics?.(metricEvent(Date.now() - started, options, true, rowCount(result)));
+    void config.metrics?.(createRuntimeMetricEvent(Date.now() - started, options, true, rowCount(result)));
     return envelopeSuccess(result, config);
   } catch (error) {
     logger?.error(POSTGRES_LOG_GROUP, "Postgres query failed.", {
-      caller,
-      error,
-      name: options?.name,
-      operation: options?.operation,
+        caller,
+        error,
+        name: options?.name,
+        operation: options?.operation,
     });
-    void config.metrics?.(metricEvent(Date.now() - started, options, false, 0));
+    void config.metrics?.(createRuntimeMetricEvent(Date.now() - started, options, false, 0));
     return handleQueryError<T>(error, config);
   }
 }
+
 async function queryClient<T>(
   client: RuntimePostgresClient,
   sql: string,
@@ -122,6 +138,7 @@ async function queryClient<T>(
     pooled.release?.();
   }
 }
+
 function envelopeSuccess<T>(
   result: { rows?: T[]; rowCount?: number },
   config: StoreRuntimePostgresOptions,
@@ -136,6 +153,7 @@ function envelopeSuccess<T>(
     rows,
   };
 }
+
 function handleQueryError<T>(error: unknown, config: StoreRuntimePostgresOptions): RuntimePostgresQueryResult<T> {
   if (config.resultMode === "envelope") {
     return {
@@ -149,6 +167,7 @@ function handleQueryError<T>(error: unknown, config: StoreRuntimePostgresOptions
   }
   throw error;
 }
+
 async function initPostgres(
   client: RuntimePostgresClient,
   schema: string,
@@ -166,14 +185,15 @@ async function initPostgres(
   }
   for (const migrate of options.migrations || []) {
     await migrate({
-      query: (sql, params = []) => runQuery(client, sql, params, {
-        allowLiterals: true,
-        operation: "migration",
-      }, options, logger),
-      schema,
+        query: (sql, params = []) => runQuery(client, sql, params, {
+            allowLiterals: true,
+            operation: "migration",
+          }, options, logger),
+        schema,
     });
   }
 }
+
 async function createEntityTable(
   client: RuntimePostgresClient,
   schema: string,
@@ -182,8 +202,14 @@ async function createEntityTable(
 ): Promise<void> {
   const table = tableName(schema, tableInput);
   await runInternal(client, `create table if not exists ${table} (id text primary key, record jsonb not null)`, [], logger);
-  await runInternal(client, `create index if not exists ${quoteIdentifier(`${tableInput}_record_gin_idx`)} on ${table} using gin (record)`, [], logger);
+  await runInternal(
+    client,
+    `create index if not exists ${quoteIdentifier(`${tableInput}_record_gin_idx`)} on ${table} using gin (record)`,
+    [],
+    logger
+  );
 }
+
 async function createExpressionIndex(
   client: RuntimePostgresClient,
   schema: string,
@@ -198,6 +224,7 @@ async function createExpressionIndex(
   const sql = `create index if not exists ${quoteIdentifier(indexName)} on ${tableName(schema, tableInput)} using ${method} (${expression})`;
   await runInternal(client, sql, [], logger);
 }
+
 async function runInternal(
   client: RuntimePostgresClient,
   sql: string,
@@ -210,6 +237,7 @@ async function runInternal(
     logger?.info(POSTGRES_LOG_GROUP, message, {});
   }
 }
+
 function validateQueryResult(
   sql: string,
   params: readonly unknown[],
@@ -222,6 +250,7 @@ function validateQueryResult(
     return error instanceof Error ? error : new Error(String(error));
   }
 }
+
 function logQuerySuccess(
   logger: NormalizedStoreLogger | null,
   sql: string,
@@ -236,14 +265,15 @@ function logQuerySuccess(
     return;
   }
   logger?.[slow ? "warn" : "info"](POSTGRES_LOG_GROUP, slow ? "Postgres slow query completed." : "Postgres query completed.", {
-    caller,
-    elapsedMs,
-    name: options?.name,
-    operation: options?.operation,
-    params: params.length,
-    sql: summarizeSql(sql),
+      caller,
+      elapsedMs,
+      name: options?.name,
+      operation: options?.operation,
+      params: params.length,
+      sql: summarizeSql(sql),
   });
 }
+
 function logPoolWait(
   client: RuntimePostgresClient,
   elapsedMs: number,
@@ -256,57 +286,31 @@ function logPoolWait(
     return;
   }
   logger?.warn(POSTGRES_LOG_GROUP, "Postgres pool wait completed.", {
-    caller,
-    elapsedMs,
-    idle: client.idleCount || 0,
-    name: options?.name,
-    operation: options?.operation,
-    total: client.totalCount || 0,
-    waiting: client.waitingCount || 0,
+      caller,
+      elapsedMs,
+      idle: client.idleCount || 0,
+      name: options?.name,
+      operation: options?.operation,
+      total: client.totalCount || 0,
+      waiting: client.waitingCount || 0,
   });
-  void config.metrics?.(metricEvent(elapsedMs, options, true, 0));
+  void config.metrics?.(createRuntimeMetricEvent(elapsedMs, options, true, 0));
 }
-function metricEvent(
-  elapsedMs: number,
-  options: RuntimePostgresQueryOptions | undefined,
-  success: boolean,
-  rowCountValue: number,
-) {
-  return {
-    elapsedMs,
-    name: options?.name,
-    operation: options?.operation,
-    rowCount: rowCountValue,
-    success,
-  };
-}
+
 function rowCount(result: { rows?: unknown[]; rowCount?: number }): number {
   return Number.isFinite(Number(result.rowCount)) ? Number(result.rowCount) : result.rows?.length || 0;
 }
-function errorCode(error: unknown): string {
-  const message = error instanceof Error ? error.message.toLowerCase() : String(error || "").toLowerCase();
-  if (message.includes("empty")) return "query-empty";
-  if (message.includes("multiple")) return "query-multi-statement";
-  if (message.includes("comment")) return "query-comments-forbidden";
-  if (message.includes("placeholder")) return "query-placeholder-mismatch";
-  if (message.includes("literal")) return "query-literal-forbidden";
-  return "query-failed";
-}
+
+const errorCode = runtimeQueryErrorCode;
+
 function attachPoolErrorLogger(client: RuntimePostgresClient, logger: NormalizedStoreLogger | null): void {
   client.on?.("error", (error) => {
-    logger?.error(POSTGRES_LOG_GROUP, "Postgres pool error.", {
-      error,
-    });
+      logger?.error(POSTGRES_LOG_GROUP, "Postgres pool error.", {
+          error,
+      });
   });
 }
-function validateSchema(schemaInput?: string): string {
-  const schema = schemaInput || "public";
-  const error = validateSqlIdentifier(schema);
-  if (error) {
-    throw new Error(error.message);
-  }
-  return schema;
-}
+
 function tableName(schema: string, tableInput: string): string {
   const error = validateSqlIdentifier(tableInput);
   if (error) {
@@ -314,26 +318,18 @@ function tableName(schema: string, tableInput: string): string {
   }
   return `${quoteIdentifier(schema)}.${quoteIdentifier(tableInput)}`;
 }
+
 function validateSqlFragment(value: string): void {
   try {
     validateRuntimePostgresQuery(`select ${value}`, [], {
-      allowLiterals: true,
-      operation: "read",
+        allowLiterals: true,
+        operation: "read",
     });
   } catch {
     throw new Error("Postgres index expression is not safe.");
   }
 }
-function summarizeSql(sql: string): string {
-  return sql.replace(/\s+/gu, " ").trim().slice(0, 240);
-}
-function hashText(value: string): string {
-  let hash = 0;
-  for (const char of value) {
-    hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;
-  }
-  return Math.abs(hash).toString(36);
-}
+
 export {
   createRuntimePostgres,
 };

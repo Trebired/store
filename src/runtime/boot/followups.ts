@@ -1,5 +1,6 @@
 import { result } from "@package/result";
 import { buildStoreLogGroup, resolveLogger } from "#3ug859kbex8c";
+import { getPath } from "#yfg488ybfy5n";
 import type {
   RuntimeBootFollowUpOutcome,
   RuntimeFollowUp,
@@ -14,9 +15,11 @@ import type {
   StoreRecord,
   StoreWhere,
 } from "#y31thwq3bdf0";
-const BOOT_FOLLOW_UP_DISPATCH = Symbol.for("@package/store/boot-follow-up-dispatch");
+
+const BOOT_FOLLOW_UP_DISPATCH = Symbol.for ("@package/store/boot-follow-up-dispatch");
 const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
 const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
+
 interface BootFollowUpDispatcherOptions {
   logger?: StoreLogger;
   loggerAdapter?: StoreLoggerAdapter;
@@ -37,7 +40,7 @@ interface BootFollowUpHandlerConfig {
 interface BootFollowUpGuard {
   timeoutMs?: number;
   pollMs?: number;
-  resolveTarget(input: BootFollowUpHandlerInput): MaybePromise<string | null | undefined>;
+  resolveTarget(input: BootFollowUpHandlerInput): MaybePromise<string|null|undefined>;
   isReady(targetId: string, input: BootFollowUpHandlerInput): MaybePromise<boolean>;
   onWaitMessage?: string;
   onReadyMessage?: string;
@@ -64,32 +67,34 @@ type BootFollowUpOutcomeDetails = {
   result?: unknown;
   details?: unknown;
 };
-type BootFollowUpDispatcherRegistry = RuntimeFollowUpRegistry & {
+type BootFollowUpDispatcherRegistry = RuntimeFollowUpRegistry& {
   [BOOT_FOLLOW_UP_DISPATCH]: RuntimeFollowUp;
 };
+
 function createBootFollowUpDispatcher(options: BootFollowUpDispatcherOptions): BootFollowUpDispatcherRegistry {
   const logger = resolveLogger(options.logger, options.loggerAdapter);
   const group = options.group || buildStoreLogGroup("boot");
   const registry = {} as BootFollowUpDispatcherRegistry;
-  const dispatch = async (input: Parameters<RuntimeFollowUp>[0]) => {
+  const dispatch = async(input: Parameters<RuntimeFollowUp>[0]) => {
     return dispatchFollowUp(input, options, logger, group);
   };
   Object.defineProperty(registry, BOOT_FOLLOW_UP_DISPATCH, {
-    enumerable: true,
-    value: dispatch,
+      enumerable: true,
+      value: dispatch,
   });
   for (const call of Object.keys(options.handlers)) {
     registry[call] = dispatch;
   }
   return new Proxy(registry, {
-    get(target, property) {
-      if (typeof property === "string" && !(property in target)) {
-        return dispatch;
-      }
-      return target[property as keyof BootFollowUpDispatcherRegistry];
-    },
+      get(target, property) {
+        if (typeof property === "string" && !(property in target)) {
+          return dispatch;
+        }
+        return target[property as keyof BootFollowUpDispatcherRegistry];
+      },
   }) as BootFollowUpDispatcherRegistry;
 }
+
 async function dispatchFollowUp(
   base: Parameters<RuntimeFollowUp>[0],
   options: BootFollowUpDispatcherOptions,
@@ -104,8 +109,8 @@ async function dispatchFollowUp(
   };
   if (!handler) {
     return bootFollowUpSkipped(base.call, base.entity, {
-      message: "Boot follow-up call is not registered.",
-      recordId: base.record.id,
+        message: "Boot follow-up call is not registered.",
+        recordId: base.record.id,
     });
   }
   try {
@@ -115,6 +120,7 @@ async function dispatchFollowUp(
     return bootFollowUpFailed(base.call, base.entity, error, base.record.id);
   }
 }
+
 async function runRegisteredHandler(
   handler: BootFollowUpHandler,
   input: BootFollowUpHandlerInput,
@@ -126,7 +132,7 @@ async function runRegisteredHandler(
   const policy = readPolicy(config.policy, input.record);
   if (policy === false) {
     return input.api.skipped({
-      message: "Boot follow-up policy is disabled.",
+        message: "Boot follow-up policy is disabled.",
     });
   }
   const guardSkip = await runGuard(config.guard, input, options, logger, group);
@@ -134,9 +140,11 @@ async function runRegisteredHandler(
   const output = await config.run(input);
   return normalizeOutcome(output, input);
 }
-function normalizeHandler(handler: BootFollowUpHandler): Required<Pick<BootFollowUpHandlerConfig, "run">> & Omit<BootFollowUpHandlerConfig, "run"> {
+
+function normalizeHandler(handler: BootFollowUpHandler): Required<Pick<BootFollowUpHandlerConfig, "run">>&Omit<BootFollowUpHandlerConfig, "run"> {
   return typeof handler === "function" ? { run: handler } : handler;
 }
+
 function readPolicy(policy: BootFollowUpHandlerConfig["policy"], record: StoreRecord): boolean {
   if (!policy) return true;
   if (typeof policy === "string") {
@@ -144,41 +152,44 @@ function readPolicy(policy: BootFollowUpHandlerConfig["policy"], record: StoreRe
   }
   return readBootBoolean(record, policy.field, policy.fallback ?? false);
 }
+
 async function runGuard(
   name: string | undefined,
   input: BootFollowUpHandlerInput,
   options: BootFollowUpDispatcherOptions,
   logger: NormalizedStoreLogger | null,
   group: string,
-): Promise<RuntimeBootFollowUpOutcome | null> {
+): Promise<RuntimeBootFollowUpOutcome|null> {
   if (!name) return null;
   const guard = options.guards?.[name];
   if (!guard) {
     return input.api.skipped({
-      message: `Boot follow-up guard "${name}" is not registered.`,
+        message: `Boot follow-up guard "${name}" is not registered.`,
     });
   }
   return runReadyGuard(guard, input, logger, group);
 }
+
 async function runReadyGuard(
   guard: BootFollowUpGuard,
   input: BootFollowUpHandlerInput,
   logger: NormalizedStoreLogger | null,
   group: string,
-): Promise<RuntimeBootFollowUpOutcome | null> {
+): Promise<RuntimeBootFollowUpOutcome|null> {
   const targetId = await guard.resolveTarget(input);
   if (!targetId) return null;
   if (await guard.isReady(targetId, input)) return null;
   logger?.info(group, guard.onWaitMessage || "Waiting for boot follow-up guard.", logMeta(input, null, targetId));
   return pollReadyGuard(guard, input, logger, group, targetId);
 }
+
 async function pollReadyGuard(
   guard: BootFollowUpGuard,
   input: BootFollowUpHandlerInput,
   logger: NormalizedStoreLogger | null,
   group: string,
   targetId: string,
-): Promise<RuntimeBootFollowUpOutcome | null> {
+): Promise<RuntimeBootFollowUpOutcome|null> {
   const timeoutMs = guard.timeoutMs ?? 30_000;
   const pollMs = guard.pollMs ?? 250;
   const deadline = Date.now() + timeoutMs;
@@ -191,20 +202,22 @@ async function pollReadyGuard(
   }
   logger?.warn(group, guard.onTimeoutMessage || "Boot follow-up guard timed out.", logMeta(input, null, targetId));
   return input.api.skipped({
-    message: guard.onTimeoutMessage || "Boot follow-up guard timed out.",
+      message: guard.onTimeoutMessage || "Boot follow-up guard timed out.",
   });
 }
+
 function createApi(input: Parameters<RuntimeFollowUp>[0]): BootFollowUpHandlerApi {
   return {
     failed: (error) => bootFollowUpFailed(input.call, input.entity, error, input.record.id),
     readBoolean: readBootBoolean,
     skipped: (details) => bootFollowUpSkipped(input.call, input.entity, {
-      recordId: input.record.id,
-      ...details,
+        recordId: input.record.id,
+        ...details,
     }),
     succeeded: (value) => bootFollowUpSucceeded(input.call, input.entity, value, input.record.id),
   };
 }
+
 function normalizeOutcome(output: unknown, input: BootFollowUpHandlerInput): RuntimeBootFollowUpOutcome {
   if (isBootFollowUpOutcome(output)) {
     return {
@@ -214,19 +227,21 @@ function normalizeOutcome(output: unknown, input: BootFollowUpHandlerInput): Run
   }
   return input.api.succeeded(output);
 }
+
 function isBootFollowUpOutcome(value: unknown): value is RuntimeBootFollowUpOutcome {
-  return Boolean(value && typeof value === "object" && "call" in value && "entity" in value && "skipped" in value);
+  return Boolean(value && typeof value === "object" && "call"in value && "entity"in value && "skipped"in value);
 }
+
 function bootFollowUpSkipped(
   call: string,
   entity: string,
   details: BootFollowUpOutcomeDetails = {},
 ): RuntimeBootFollowUpOutcome {
   const envelope = result.noop("boot-follow-up-skipped", {
-    details: details.details,
-    meta: {
-      message: details.message || "Boot follow-up skipped.",
-    },
+      details: details.details,
+      meta: {
+        message: details.message || "Boot follow-up skipped.",
+      },
   });
   return {
     ...envelope,
@@ -239,6 +254,7 @@ function bootFollowUpSkipped(
     skipped: true,
   };
 }
+
 function bootFollowUpSucceeded(
   call: string,
   entity: string,
@@ -246,7 +262,7 @@ function bootFollowUpSucceeded(
   recordId?: string,
 ): RuntimeBootFollowUpOutcome {
   const envelope = result.ok("boot-follow-up-completed", {
-    data: value ?? null,
+      data: value ?? null,
   });
   return {
     ...envelope,
@@ -258,6 +274,7 @@ function bootFollowUpSucceeded(
     skipped: false,
   };
 }
+
 function bootFollowUpFailed(
   call: string,
   entity: string,
@@ -266,10 +283,10 @@ function bootFollowUpFailed(
 ): RuntimeBootFollowUpOutcome {
   const message = error instanceof Error ? error.message : "Boot follow-up failed.";
   const envelope = result.error("boot-follow-up-failed", 500, {
-    details: {
-      cause: error,
-      message,
-    },
+      details: {
+        cause: error,
+        message,
+      },
   });
   return {
     ...envelope,
@@ -281,6 +298,7 @@ function bootFollowUpFailed(
     skipped: false,
   };
 }
+
 function readBootBoolean(record: StoreRecord, path: string, fallback = false): boolean {
   const value = getPath(record, path);
   if (typeof value === "boolean") return value;
@@ -292,11 +310,7 @@ function readBootBoolean(record: StoreRecord, path: string, fallback = false): b
   if (FALSE_VALUES.has(normalized)) return false;
   return fallback;
 }
-function getPath(row: StoreRecord, path: string): unknown {
-  return path.split(".").reduce<unknown>((current, key) => {
-    return current && typeof current === "object" ? (current as Record<string, unknown>)[key] : undefined;
-  }, row);
-}
+
 function logMeta(input: BootFollowUpHandlerInput, error?: unknown, targetId?: string): Record<string, unknown> {
   return {
     call: input.call,
@@ -306,9 +320,11 @@ function logMeta(input: BootFollowUpHandlerInput, error?: unknown, targetId?: st
     targetId,
   };
 }
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
 export {
   BOOT_FOLLOW_UP_DISPATCH,
   bootFollowUpFailed,

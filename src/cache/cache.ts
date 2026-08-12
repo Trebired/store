@@ -5,6 +5,7 @@ import type {
   StoreCacheState,
   StoreContext,
 } from "#y31thwq3bdf0";
+import { stableStringify } from "#yfg488ybfy5n";
 
 type CacheEntry<T> = {
   entity: string;
@@ -37,8 +38,8 @@ class StoreCache {
     this.enabled = options === true || config.enabled === true || Boolean(config.l2);
     this.l2 = config.l2;
     this.ignoredKeys = new Set([
-      ...DEFAULT_IGNORED_KEYS,
-      ...(config.ignoredContextKeys || []),
+        ...DEFAULT_IGNORED_KEYS,
+        ...(config.ignoredContextKeys || []),
     ]);
   }
 
@@ -58,12 +59,12 @@ class StoreCache {
 
   createKey(entity: string, operation: string, input: unknown, context: unknown, mode: string): string {
     return stableStringify({
-      context: this.filterContext(context),
-      entity,
-      input,
-      mode,
-      operation,
-      version: this.version(entity),
+        context: this.filterContext(context),
+        entity,
+        input,
+        mode,
+        operation,
+        version: this.version(entity),
     });
   }
 
@@ -131,9 +132,9 @@ class StoreCache {
     if (l2Value !== null && l2Value !== undefined) {
       this.track(entity, key);
       this.l1.set(key, {
-        entity,
-        value: l2Value,
-        version: this.version(entity),
+          entity,
+          value: l2Value,
+          version: this.version(entity),
       });
       return l2Value;
     }
@@ -141,9 +142,9 @@ class StoreCache {
     const value = await load();
     this.track(entity, key);
     this.l1.set(key, {
-      entity,
-      value,
-      version: this.version(entity),
+        entity,
+        value,
+        version: this.version(entity),
     });
     await this.l2?.set(key, value);
     return value;
@@ -171,21 +172,6 @@ class StoreCache {
     keys.add(key);
     this.entityKeys.set(entity, keys);
   }
-}
-
-function stableStringify(value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(",")}]`;
-  }
-
-  if (value && typeof value === "object") {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`)
-      .join(",")}}`;
-  }
-
-  return JSON.stringify(value);
 }
 
 export {

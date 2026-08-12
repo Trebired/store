@@ -33,8 +33,8 @@ class StoreRuntime {
     this.logger = resolveLogger(options.logger, options.loggerAdapter);
     this.resolveStorage = createStorageResolver(options);
     this.logger?.info(buildStoreLogGroup("create"), "Store created.", {
-      cacheEnabled: this.cache.inspect().enabled,
-      entities: Object.keys(options.entities),
+        cacheEnabled: this.cache.inspect().enabled,
+        entities: Object.keys(options.entities),
     });
   }
 
@@ -54,7 +54,7 @@ class StoreRuntime {
     const value = this.resolveStorage(entity.definition);
     if (!value) {
       return unresolved("store-storage-error", "Store storage adapter is not registered.", entity.name, 500, {
-        storage: entity.definition.storage,
+          storage: entity.definition.storage,
       });
     }
 
@@ -77,23 +77,23 @@ class StoreRuntime {
       const key = this.cache.createKey(entity.name, operation, createReadKeyInput(input, readOptions), context, mode);
       const cached = await this.cache.read(entity.name, key, load, readOptions.cacheBypass || readOptions.cache === false);
       this.logger?.info(buildStoreLogGroup("read"), "Store read completed.", {
-        cache: cached.inspection,
-        entity: entity.name,
-        mode,
-        operation,
+          cache: cached.inspection,
+          entity: entity.name,
+          mode,
+          operation,
       });
       return ok(cached.value, "Store read completed.", readOptions.cacheMeta ? {
-        cache: cached.inspection,
-      } : undefined);
+          cache: cached.inspection,
+        } : undefined);
     } catch (error) {
       this.logger?.error(buildStoreLogGroup("read"), "Store read failed.", {
-        entity: entity.name,
-        error,
-        operation,
+          entity: entity.name,
+          error,
+          operation,
       });
       return error instanceof StoreOperationError
-        ? error.result as unknown as StoreResult<T>
-        : storageFail(error, entity.name, entity.definition.storage);
+      ? error.result as unknown as StoreResult<T>
+      : storageFail(error, entity.name, entity.definition.storage);
     }
   }
 
@@ -131,7 +131,7 @@ class StoreRuntime {
   invalidate(entity: string): void {
     this.cache.invalidateEntity(entity);
     this.logger?.info(buildStoreLogGroup("cache"), "Store entity cache invalidated.", {
-      entity,
+        entity,
     });
   }
 
@@ -158,17 +158,17 @@ class StoreRuntime {
     const modeDefinition = entity.definition.modes?.[mode];
     if (!modeDefinition) {
       throw new StoreOperationError(fail("store-invalid-mode", "Store mode is not registered.", {
-        entity: entity.name,
-        mode,
-      }) as unknown as StoreResult<never>);
+            entity: entity.name,
+            mode,
+        }) as unknown as StoreResult<never>);
     }
 
     const selected = modeDefinition.select ? modeDefinition.select(record) : record;
     const enricher = this.options.enrichers?.[modeDefinition.enrich || `${entity.name}.${mode}`];
     return enricher ? enricher(selected, {
-      context,
-      entity: entity.name,
-      mode,
+        context,
+        entity: entity.name,
+        mode,
     }) : selected;
   }
 }
@@ -191,9 +191,9 @@ function unresolved(
   return {
     ok: false,
     result: fail(code, message, {
-      ...details,
-      entity,
-    }, status),
+        ...details,
+        entity,
+      }, status),
   };
 }
 
@@ -221,11 +221,11 @@ function createStorageResolver(options: CreateStoreOptions): (definition: Entity
       return options.storages[definition.storage] || null;
     }
 
-    if (options.storage && "all" in options.storage) {
+    if (options.storage && "all"in options.storage) {
       return options.storage as StorageAdapter;
     }
 
-    return (options.storage as Record<string, StorageAdapter> | undefined)?.[definition.storage] || null;
+    return (options.storage as Record<string, StorageAdapter>|undefined)?.[definition.storage] || null;
   };
 }
 

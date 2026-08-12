@@ -38,9 +38,9 @@ async function readAll<TRecord extends StoreRecord>(
     return storage.result as unknown as StoreResult<TRecord[]>;
   }
 
-  return runtime.cachedRead(resolved.value, "all", readOptions.where ?? {}, ctx, readOptions, async () => {
-    const rows = await storage.value.all(resolved.value, ctx, runtime.toStorageOptions(readOptions));
-    return runtime.mapRows<TRecord>(resolved.value, rows, ctx, readOptions);
+  return runtime.cachedRead(resolved.value, "all", readOptions.where ?? {}, ctx, readOptions, async() => {
+      const rows = await storage.value.all(resolved.value, ctx, runtime.toStorageOptions(readOptions));
+      return runtime.mapRows<TRecord>(resolved.value, rows, ctx, readOptions);
   });
 }
 
@@ -50,32 +50,32 @@ async function readBy<TRecord extends StoreRecord>(
   where: StoreWhere,
   context: StoreContextInput,
   readOptions: StoreReadOptions = {},
-): Promise<StoreResult<TRecord | null>> {
+): Promise<StoreResult<TRecord|null>> {
   const resolved = runtime.resolveEntity(entityInput);
   if (!resolved.ok) {
-    return resolved.result as unknown as StoreResult<TRecord | null>;
+    return resolved.result as unknown as StoreResult<TRecord|null>;
   }
 
   const normalized = normalizeContext(resolved.value.name, context);
   if (!normalized.ok) {
-    return normalized as unknown as StoreResult<TRecord | null>;
+    return normalized as unknown as StoreResult<TRecord|null>;
   }
   const ctx = normalized.data || {};
   const invalid = validateWhere(resolved.value.name, where)
-    || validateOptionalWhere(resolved.value.name, readOptions.where)
-    || validateContext(resolved.value.name, resolved.value.definition, ctx, readOptions.scope);
+  ||validateOptionalWhere(resolved.value.name, readOptions.where)
+  ||validateContext(resolved.value.name, resolved.value.definition, ctx, readOptions.scope);
   if (invalid) {
-    return invalid as unknown as StoreResult<TRecord | null>;
+    return invalid as unknown as StoreResult<TRecord|null>;
   }
 
   const storage = runtime.resolveStorageResult(resolved.value);
   if (!storage.ok) {
-    return storage.result as unknown as StoreResult<TRecord | null>;
+    return storage.result as unknown as StoreResult<TRecord|null>;
   }
 
-  return runtime.cachedRead(resolved.value, "by", where, ctx, readOptions, async () => {
-    const row = await storage.value.by(resolved.value, where, ctx, runtime.toStorageOptions(readOptions));
-    return row ? runtime.mapRow<TRecord>(resolved.value, row, ctx, readOptions) : null;
+  return runtime.cachedRead(resolved.value, "by", where, ctx, readOptions, async() => {
+      const row = await storage.value.by(resolved.value, where, ctx, runtime.toStorageOptions(readOptions));
+      return row ? runtime.mapRow<TRecord>(resolved.value, row, ctx, readOptions) : null;
   });
 }
 
@@ -107,7 +107,7 @@ async function count(
   }
 
   return runtime.cachedRead(resolved.value, "count", readOptions.where ?? {}, ctx, readOptions, () => {
-    return storage.value.count(resolved.value, ctx, runtime.toStorageOptions(readOptions));
+      return storage.value.count(resolved.value, ctx, runtime.toStorageOptions(readOptions));
   });
 }
 
@@ -139,7 +139,7 @@ async function hasAny(
   }
 
   return runtime.cachedRead(resolved.value, "hasAny", readOptions.where ?? {}, ctx, readOptions, () => {
-    return storage.value.hasAny(resolved.value, ctx, runtime.toStorageOptions(readOptions));
+      return storage.value.hasAny(resolved.value, ctx, runtime.toStorageOptions(readOptions));
   });
 }
 

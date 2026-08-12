@@ -77,7 +77,7 @@ function bootFollowUpWhen(
   };
 }
 
-function mergeBootOptions(...items: readonly (StoreRuntimeBootOptions | null | undefined)[]): StoreRuntimeBootOptions {
+function mergeBootOptions(...items: readonly(StoreRuntimeBootOptions | null | undefined)[]): StoreRuntimeBootOptions {
   const out: StoreRuntimeBootOptions = {};
   for (const item of items) {
     if (!item) continue;

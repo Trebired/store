@@ -27,14 +27,14 @@ function createStore(options: CreateStoreOptions): Store {
     entity,
     inspectCache: () => runtime.cache.inspect(),
     records: (name, views) => createRecordViews({
-      entity,
-    }, name, views),
+        entity,
+      }, name, views),
     repair: createStoreRepairApi({
-      entity,
+        entity,
     }),
     subEntity: createSubEntityReader({
-      options,
-      readBy: read.by,
+        options,
+        readBy: read.by,
     }),
   };
 }

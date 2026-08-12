@@ -2,6 +2,7 @@ import {
   getOrCreateRequestValue,
   getStoreRequestContext,
 } from "#g8u7bg42czn8";
+import { matchesStoreWhere } from "#yfg488ybfy5n";
 import type {
   ModeEnricher,
   ModeEnricherRegistry,
@@ -62,7 +63,7 @@ function createHydrator(
   getStore: () => Store,
   declarations: RuntimeHydrationDeclaration[],
 ): ModeEnricher {
-  return async (record, context) => {
+  return async(record, context) => {
     let current = record;
     for (const declaration of declarations) {
       current = await applyHydration(getStore(), current, context.context, declaration);
@@ -104,12 +105,12 @@ async function hydrateRelation(
   }
 
   const key = `relation:${declaration.entity}:${declaration.mode || "full"}:${id}:${JSON.stringify(context)}`;
-  const related = await memoValue(key, async () => {
-    return store.entity.read.by(declaration.entity, {
-      id,
-    }, context, {
-      mode: declaration.mode,
-    });
+  const related = await memoValue(key, async() => {
+      return store.entity.read.by(declaration.entity, {
+          id,
+        }, context, {
+          mode: declaration.mode,
+      });
   });
   return related.ok && related.data ? {
     ...record,
@@ -128,10 +129,10 @@ async function hydrateCount(
     return record;
   }
 
-  const rows = await memoValue(`count:${declaration.entity}:${declaration.foreignKey}:${JSON.stringify(context)}`, async () => {
-    return store.entity.read.all(declaration.entity, context, {
-      mode: "raw",
-    });
+  const rows = await memoValue(`count:${declaration.entity}:${declaration.foreignKey}:${JSON.stringify(context)}`, async() => {
+      return store.entity.read.all(declaration.entity, context, {
+          mode: "raw",
+      });
   });
   if (!rows.ok) {
     return record;
@@ -142,7 +143,7 @@ async function hydrateCount(
     ...record,
     ...countAssignments(related, declaration),
   };
-  for (const item of declaration.set || []) {
+  for (const item of declaration.set ||[]) {
     if (!item.when || matchesCondition(next, item.when)) {
       next = {
         ...next,
@@ -167,15 +168,15 @@ function createHydrationApi(store: Store, context: StoreContext): RuntimeHydrati
     context,
     readAll: (entity, readContext, options) => store.entity.read.all(entity, readContext, options),
     readById: (entity, id, readContext, options) => store.entity.read.by(entity, {
-      id,
-    }, readContext, options),
+        id,
+      }, readContext, options),
     url: (record) => String(record.url || record.href || `/${record.id}`),
   };
 }
 
 function matchesCondition(record: StoreRecord, condition: RuntimeBootCondition): boolean {
   const value = resolveExpression(record, condition.field);
-  if ("equals" in condition && value !== condition.equals) {
+  if ("equals"in condition && value !== condition.equals) {
     return false;
   }
   if (condition.equals_any && !condition.equals_any.some((item) => String(item) === String(value))) {
@@ -187,15 +188,13 @@ function matchesCondition(record: StoreRecord, condition: RuntimeBootCondition):
   return true;
 }
 
-function matchesWhere(record: StoreRecord, where: Record<string, unknown>): boolean {
-  return Object.entries(where).every(([key, value]) => record[key] === value);
-}
+const matchesWhere = matchesStoreWhere;
 
 function resolveExpression(record: StoreRecord, expression: string): unknown {
   const path = expression.startsWith("entity.") ? expression.slice("entity.".length) : expression;
   return path.split(".").reduce<unknown>((current, key) => {
-    return current && typeof current === "object" ? (current as Record<string, unknown>)[key] : undefined;
-  }, record);
+      return current && typeof current === "object" ? (current as Record<string, unknown>)[key] : undefined;
+    }, record);
 }
 
 function memoValue<T>(key: string, load: () => Promise<T>): Promise<T> {

@@ -7,6 +7,7 @@ import type {
   StoreWhere,
   StoreWriteOptions,
 } from "#y31thwq3bdf0";
+import { isPlainObject } from "#yfg488ybfy5n";
 
 function createMemoryStorageAdapter(seed: Record<string, StoreRecord[]> = {}): StorageAdapter {
   const records = new Map<string, Map<string, StoreRecord>>();
@@ -20,16 +21,16 @@ function createMemoryStorageAdapter(seed: Record<string, StoreRecord[]> = {}): S
     },
     async by(entity, where, context, options) {
       return filterRows([...table(records, entity.name).values()], entity, context, {
-        ...options,
-        where: {
-          ...(options?.where || {}),
-          ...where,
-        },
+          ...options,
+          where: {
+            ...(options?.where || {}),
+            ...where,
+          },
       })[0] ?? null;
     },
     async byIds(entity, ids, context, options) {
       return filterRows(ids.map((id) => table(records, entity.name).get(id)).filter(Boolean) as StoreRecord[], entity, context, options)
-        .map(clone);
+      .map(clone);
     },
     async count(entity, context, options) {
       return filterRows([...table(records, entity.name).values()], entity, context, options).length;
@@ -48,7 +49,7 @@ function createMemoryStorageAdapter(seed: Record<string, StoreRecord[]> = {}): S
     async remove(entity, _context, id) {
       return table(records, entity.name).delete(id);
     },
-    removeMany: async (entity, _context, ids) => removeManyRows(records, entity.name, ids),
+    removeMany: async(entity, _context, ids) => removeManyRows(records, entity.name, ids),
   };
 }
 
@@ -123,10 +124,6 @@ function matchesValue(actual: unknown, expected: unknown): boolean {
   return actual === expected;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
-
 function sortRows(rows: StoreRecord[], sort: readonly string[]): StoreRecord[] {
   if (sort.length === 0) {
     return rows;
@@ -161,7 +158,7 @@ function compareValues(a: unknown, b: unknown): number {
   }
 
   return String(a).localeCompare(String(b), undefined, {
-    numeric: true,
+      numeric: true,
   });
 }
 

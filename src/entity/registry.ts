@@ -4,10 +4,9 @@ import type {
   EntityRegistry,
   ResolvedEntity,
 } from "#y31thwq3bdf0";
+import { identity } from "#yfg488ybfy5n";
 
-function defineEntityRegistry<TRegistry extends EntityRegistry>(registry: TRegistry): TRegistry {
-  return registry;
-}
+const defineEntityRegistry = identity as <TRegistry extends EntityRegistry > (registry: TRegistry) => TRegistry;
 
 function resolveEntityName(registry: EntityRegistry, nameOrAlias: string): string | null {
   if (registry[nameOrAlias]) {
@@ -25,11 +24,11 @@ function resolveEntityName(registry: EntityRegistry, nameOrAlias: string): strin
   return null;
 }
 
-function resolveEntityDefinition<TRecord = never>(
+function resolveEntityDefinition<TRecord=never>(
   registry: EntityRegistry,
   nameOrAlias: string,
 ): ResolvedEntity | null {
-  void (null as TRecord | null);
+  void(null as TRecord | null);
   const name = resolveEntityName(registry, nameOrAlias);
   if (!name) {
     return null;
@@ -48,9 +47,9 @@ function resolveEntityMetadata(registry: EntityRegistry, nameOrAlias: string): E
 
 function createEntityAliases(name: string, definition: EntityDefinition): Set<string> {
   const aliases = new Set<string>([
-    normalizeEntityToken(name),
-    normalizeEntityToken(singularize(name)),
-    normalizeEntityToken(pluralize(name)),
+      normalizeEntityToken(name),
+      normalizeEntityToken(singularize(name)),
+      normalizeEntityToken(pluralize(name)),
   ]);
 
   for (const alias of definition.aliases || []) {

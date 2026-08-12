@@ -21,13 +21,13 @@ function createModeEnricherRegistry(
         continue;
       }
 
-      registry[modeDefinition.enrich || `${entity}.${mode}`] = async (record, context) => {
+      registry[modeDefinition.enrich || `${entity}.${mode}`] = async(record, context) => {
         const api = createHookApi(options);
         return runHooks(options, record, hooks, {
-          context: context.context,
-          entity,
-          mode,
-        }, api);
+            context: context.context,
+            entity,
+            mode,
+          }, api);
       };
     }
   }
@@ -49,9 +49,9 @@ async function runHooks(
   let current = record;
   for (const hookName of hooks) {
     const hook = await options.loadHook({
-      entity: context.entity,
-      hook: hookName,
-      mode: context.mode,
+        entity: context.entity,
+        hook: hookName,
+        mode: context.mode,
     });
     current = hook ? await runHook(hook, current, context, hookName, api) : current;
   }
@@ -71,10 +71,10 @@ async function runHook(
   api: ModeEnricherHookApi,
 ): Promise<StoreRecord> {
   const next = await hook(record, api, {
-    context: context.context,
-    entity: context.entity,
-    hook: hookName,
-    mode: context.mode,
+      context: context.context,
+      entity: context.entity,
+      hook: hookName,
+      mode: context.mode,
   });
   const invalid = assertWritableRecord(context.entity, next);
   if (invalid) {
@@ -127,8 +127,8 @@ function normalizeHookNames(hooks: unknown): string[] {
 
   if (hooks && typeof hooks === "object") {
     return Object.entries(hooks)
-      .filter(([, enabled]) => enabled === true)
-      .map(([hook]) => hook);
+    .filter(([, enabled]) => enabled === true)
+    .map(([hook]) => hook);
   }
 
   return [];

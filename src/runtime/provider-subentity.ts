@@ -28,7 +28,7 @@ function wrapProviderSubEntities(
       const provider = providers[entity];
       return provider ? readProviderCount(read, entity, provider, context, options) : read.count(entity, context, options);
     },
-    hasAny: async (entity, context, options) => {
+    hasAny: async(entity, context, options) => {
       const provider = providers[entity];
       if (!provider) {
         return read.hasAny(entity, context, options);
@@ -61,10 +61,10 @@ async function readProviderBy<TRecord extends StoreRecord>(
   where: StoreWhere,
   context: StoreContextInput,
   options: StoreReadOptions = {},
-): Promise<StoreResult<TRecord | null>> {
+): Promise<StoreResult<TRecord|null>> {
   const valid = validateProviderContext(entity, provider, context);
   if (!valid.ok) {
-    return valid.result as unknown as StoreResult<TRecord | null>;
+    return valid.result as unknown as StoreResult<TRecord|null>;
   }
   const row = await provider.by?.(where, valid.context, options, createProviderApi(read)) ?? null;
   return ok(row as TRecord | null, "Store virtual sub-entity read completed.");
@@ -106,7 +106,7 @@ function validateProviderContext(
   const contextValue = normalized.data || {};
   const validation = provider.validateContext?.(contextValue);
   if (!validation || validation.ok === true) {
-    const ctx = validation && "ctx" in validation ? validation.ctx || contextValue : contextValue;
+    const ctx = validation && "ctx"in validation ? validation.ctx || contextValue : contextValue;
     return {
       context: ctx as StoreContext,
       ok: true,
@@ -122,15 +122,15 @@ function createProviderApi(read: StoreEntityRead): RuntimeProviderSubEntityApi {
   return {
     readAll: (entity, context, options) => read.all(entity, context, options),
     readById: (entity, id, context, options) => read.by(entity, {
-      id,
-    }, context, options),
+        id,
+      }, context, options),
     recorded_at: new Date().toISOString(),
   };
 }
 
 function isProviderSubEntityRegistry(input: unknown): input is RuntimeProviderSubEntityRegistry {
   return Boolean(input && typeof input === "object" && Object.values(input).some((value) => {
-    return Boolean(value && typeof value === "object" && (value as { kind?: unknown }).kind === "provider");
+        return Boolean(value && typeof value === "object" && (value as { kind?: unknown }).kind === "provider");
   }));
 }
 

@@ -25,7 +25,11 @@ import { buildStoreLogGroup } from "#3ug859kbex8c";
 
 function createEntityWrite(
   runtime: StoreRuntime,
-  readBy: (entity: string, where: StoreWhere, context: StoreContextInput, options?: { mode?: "raw"; cacheBypass?: boolean; scope?: "context" | "all" }) => Promise<StoreResult<StoreRecord | null>>,
+  readBy: (entity: string, where: StoreWhere, context: StoreContextInput, options?: {
+      mode?: "raw";
+      cacheBypass?: boolean;
+      scope?: "context" | "all"
+  }) => Promise<StoreResult<StoreRecord|null>>,
 ): StoreEntityWrite {
   return {
     by: (entity, where, context, patch, options) => writeBy(runtime, readBy, entity, where, context, patch, options),
@@ -67,16 +71,16 @@ async function put<TRecord extends StoreRecord>(
     const out = await storage.value.put(resolved.value, ctx, stored, writeOptions);
     invalidate(runtime, resolved.value.name);
     runtime.logger?.info(buildStoreLogGroup("write"), "Store record saved.", {
-      entity: resolved.value.name,
-      id: out.id,
-      operation: "put",
+        entity: resolved.value.name,
+        id: out.id,
+        operation: "put",
     });
     return ok(out as TRecord, "Store record saved.");
   } catch (error) {
     runtime.logger?.error(buildStoreLogGroup("write"), "Store record save failed.", {
-      entity: resolved.value.name,
-      error,
-      operation: "put",
+        entity: resolved.value.name,
+        error,
+        operation: "put",
     });
     return storageFail(error, resolved.value.name, resolved.value.definition.storage);
   }
@@ -84,27 +88,31 @@ async function put<TRecord extends StoreRecord>(
 
 async function writeBy(
   runtime: StoreRuntime,
-  readBy: (entity: string, where: StoreWhere, context: StoreContextInput, options?: { mode?: "raw"; cacheBypass?: boolean; scope?: "context" | "all" }) => Promise<StoreResult<StoreRecord | null>>,
+  readBy: (entity: string, where: StoreWhere, context: StoreContextInput, options?: {
+      mode?: "raw";
+      cacheBypass?: boolean;
+      scope?: "context" | "all"
+  }) => Promise<StoreResult<StoreRecord|null>>,
   entityInput: string,
   where: StoreWhere,
   context: StoreContextInput,
   patch: StoreWhere,
   writeOptions: StoreWriteOptions = {},
-): Promise<StoreResult<StoreRecord | null>> {
+): Promise<StoreResult<StoreRecord|null>> {
   const current = await readBy(entityInput, where, context, {
-    cacheBypass: true,
-    mode: "raw",
-    scope: writeOptions.scope,
+      cacheBypass: true,
+      mode: "raw",
+      scope: writeOptions.scope,
   });
   if (!current.ok || !current.data) {
-    return current as unknown as StoreResult<StoreRecord | null>;
+    return current as unknown as StoreResult<StoreRecord|null>;
   }
 
   return put(runtime, entityInput, context, {
-    ...current.data,
-    ...patch,
-    id: current.data.id,
-  }, writeOptions);
+      ...current.data,
+      ...patch,
+      id: current.data.id,
+    }, writeOptions);
 }
 
 async function remove(
@@ -125,7 +133,7 @@ async function remove(
   }
   const ctx = normalized.data || {};
   const invalid = validateContext(resolved.value.name, resolved.value.definition, ctx, writeOptions.scope)
-    || validateId(resolved.value.name, id);
+  ||validateId(resolved.value.name, id);
   if (invalid) {
     return invalid as unknown as StoreResult<boolean>;
   }
@@ -139,18 +147,18 @@ async function remove(
     const removed = await storage.value.remove(resolved.value, ctx, id, writeOptions);
     invalidate(runtime, resolved.value.name);
     runtime.logger?.info(buildStoreLogGroup("write"), "Store record remove completed.", {
-      entity: resolved.value.name,
-      id,
-      operation: "remove",
-      removed,
+        entity: resolved.value.name,
+        id,
+        operation: "remove",
+        removed,
     });
     return ok(removed, removed ? "Store record removed." : "Store record was already absent.");
   } catch (error) {
     runtime.logger?.error(buildStoreLogGroup("write"), "Store record remove failed.", {
-      entity: resolved.value.name,
-      error,
-      id,
-      operation: "remove",
+        entity: resolved.value.name,
+        error,
+        id,
+        operation: "remove",
     });
     return storageFail(error, resolved.value.name, resolved.value.definition.storage);
   }
@@ -174,7 +182,7 @@ async function removeMany(
   }
   const ctx = normalized.data || {};
   const invalid = validateContext(resolved.value.name, resolved.value.definition, ctx, writeOptions.scope)
-    || validateIds(resolved.value.name, ids);
+  ||validateIds(resolved.value.name, ids);
   if (invalid) {
     return invalid as unknown as StoreResult<StoreBulkRemoveResult>;
   }
@@ -188,17 +196,17 @@ async function removeMany(
     const removed = await removeManyFromStorage(storage.value, resolved.value, ctx, ids, writeOptions);
     invalidate(runtime, resolved.value.name);
     runtime.logger?.info(buildStoreLogGroup("write"), "Store records bulk remove completed.", {
-      entity: resolved.value.name,
-      operation: "removeMany",
-      removed: removed.removed,
-      requested: removed.requested,
+        entity: resolved.value.name,
+        operation: "removeMany",
+        removed: removed.removed,
+        requested: removed.requested,
     });
     return ok(removed, "Store records bulk remove completed.");
   } catch (error) {
     runtime.logger?.error(buildStoreLogGroup("write"), "Store records bulk remove failed.", {
-      entity: resolved.value.name,
-      error,
-      operation: "removeMany",
+        entity: resolved.value.name,
+        error,
+        operation: "removeMany",
     });
     return storageFail(error, resolved.value.name, resolved.value.definition.storage);
   }
@@ -212,8 +220,8 @@ function validateWriteInput(
   writeOptions: StoreWriteOptions,
 ) {
   return validateContext(entity, definition, context, writeOptions.scope)
-    || validateRecord(entity, record)
-    || assertWritableRecord(entity, record);
+  ||validateRecord(entity, record)
+  ||assertWritableRecord(entity, record);
 }
 
 function validateIds(entity: string, ids: string[]) {

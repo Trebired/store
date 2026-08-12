@@ -17,10 +17,10 @@ function runWithStoreRequestContext<T>(
   }
 
   return requestStorage.run({
-    entityLoaders: new Map(),
-    meta,
-    values: new Map(),
-  }, run);
+      entityLoaders: new Map(),
+      meta,
+      values: new Map(),
+    }, run);
 }
 
 function getStoreRequestContext(): StoreRequestContext | null {

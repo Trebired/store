@@ -34,8 +34,8 @@ import type {
 function createStoreRuntime(options: StoreRuntimeCreateOptions): StoreRuntimeFacade {
   const logger = resolveLogger(options.logger, options.loggerAdapter);
   const entities = normalizeRuntimeEntities(options.entities, {
-    hasPostgres: Boolean(options.postgres),
-    hasSqlite: Boolean(options.sqlite),
+      hasPostgres: Boolean(options.postgres),
+      hasSqlite: Boolean(options.sqlite),
   });
   const postgresLogger = resolveLogger(options.postgres?.logger || options.logger, options.loggerAdapter);
   const postgresRuntime = createRuntimePostgres(options.postgres, entities, postgresLogger || logger);
@@ -45,25 +45,25 @@ function createStoreRuntime(options: StoreRuntimeCreateOptions): StoreRuntimeFac
   let store: Store;
   const enrichers = createRuntimeEnrichers(options, () => store);
   store = createStore({
-    cache: {
-      enabled: options.memo?.l1 !== false,
-      l2: options.memo?.l2,
-    },
-    entities,
-    enrichers,
-    logger: options.logger,
-    loggerAdapter: options.loggerAdapter,
-    storages: createRuntimeStorages(postgresRuntime, sqliteRuntime),
-    subEntities: isProviderSubEntityRegistry(options.subEntities) ? undefined : options.subEntities,
+      cache: {
+        enabled: options.memo?.l1 !== false,
+        l2: options.memo?.l2,
+      },
+      entities,
+      enrichers,
+      logger: options.logger,
+      loggerAdapter: options.loggerAdapter,
+      storages: createRuntimeStorages(postgresRuntime, sqliteRuntime),
+      subEntities: isProviderSubEntityRegistry(options.subEntities) ? undefined : options.subEntities,
   });
   const read = wrapProviderSubEntities(store.entity.read, isProviderSubEntityRegistry(options.subEntities) ? options.subEntities : undefined);
   const entity = wrapEntityEvents({
-    read,
-    write: store.entity.write,
-  }, options.events?.onWrite, (name) => resolveEntityName(entities, name) || name);
+      read,
+      write: store.entity.write,
+    }, options.events?.onWrite, (name) => resolveEntityName(entities, name) || name);
   const boot = createBootRunner({
-    entity,
-  }, options.boot);
+      entity,
+    }, options.boot);
   const onBoot = createRuntimeBootInitializer(options, postgresRuntime, sqliteRuntime, boot);
 
   return {
@@ -74,8 +74,8 @@ function createStoreRuntime(options: StoreRuntimeCreateOptions): StoreRuntimeFac
     onBoot,
     postgres: postgresRuntime.postgres,
     records: (name, views) => createRecordViews({
-      entity,
-    }, name, views),
+        entity,
+      }, name, views),
     repair: store.repair,
     sqlite: sqliteRuntime.sqlite,
     subEntity: store.subEntity,
@@ -88,7 +88,7 @@ function createRuntimeBootInitializer(
   sqliteRuntime: ReturnType<typeof createRuntimeSqlite>,
   boot: () => ReturnType<StoreRuntimeFacade["onBoot"]>,
 ): StoreRuntimeFacade["onBoot"] {
-  return async () => {
+  return async() => {
     if (options.postgres) await postgresRuntime.postgres.init();
     if (options.sqlite) await sqliteRuntime.sqlite.init();
     return boot();
@@ -102,14 +102,14 @@ function createRuntimeStorages(
   return {
     memory: createMemoryStorageAdapter(),
     postgres: createPostgresJsonbStorageAdapter({
-      client: postgresRuntime.client,
-      schema: postgresRuntime.schema,
+        client: postgresRuntime.client,
+        schema: postgresRuntime.schema,
     }),
     ...(sqliteRuntime.client ? {
-      sqlite: createSqliteJsonStorageAdapter({
-        database: sqliteRuntime.client,
-      }),
-    } : {}),
+        sqlite: createSqliteJsonStorageAdapter({
+            database: sqliteRuntime.client,
+        }),
+      } : {}),
   };
 }
 
@@ -119,12 +119,12 @@ function createRuntimeEnrichers(
 ): ModeEnricherRegistry {
   const hydration = createHydrationEnrichers(options.entities, getStore);
   const hooks = createModeEnricherRegistry({
-    entities: normalizeRuntimeEntities(options.entities, {
-      hasPostgres: Boolean(options.postgres),
-      hasSqlite: Boolean(options.sqlite),
-    }),
-    getStore,
-    loadHook: (input) => loadRuntimeHook(options.modes, input),
+      entities: normalizeRuntimeEntities(options.entities, {
+          hasPostgres: Boolean(options.postgres),
+          hasSqlite: Boolean(options.sqlite),
+      }),
+      getStore,
+      loadHook: (input) => loadRuntimeHook(options.modes, input),
   });
   return combineEnrichers(hydration, hooks);
 }
@@ -132,13 +132,13 @@ function createRuntimeEnrichers(
 function combineEnrichers(...registries: ModeEnricherRegistry[]): ModeEnricherRegistry {
   const keys = new Set(registries.flatMap((registry) => Object.keys(registry)));
   return Object.fromEntries([...keys].map((key) => [
-    key,
-    combineKey(registries.map((registry) => registry[key]).filter(Boolean)),
+        key,
+        combineKey(registries.map((registry) => registry[key]).filter(Boolean)),
   ]));
 }
 
 function combineKey(enrichers: ModeEnricher[]): ModeEnricher {
-  return async (record, context) => {
+  return async(record, context) => {
     let current = record;
     for (const enricher of enrichers) {
       current = await enricher(current, context);
@@ -159,7 +159,7 @@ async function loadRuntimeHook(
   const file = hookFileUrl(options, input);
   try {
     const mod = await import(file.href);
-    return mod.default || mod[input.hook] || mod.hook;
+    return mod.default ||mod[input.hook] || mod.hook;
   } catch (error) {
     if ((error as { code?: string }).code === "ERR_MODULE_NOT_FOUND") {
       return null;
@@ -174,10 +174,10 @@ function hookFileUrl(
 ): URL {
   const convention = options.hookFileConvention || "entity/with/name";
   const path = convention
-    .replace("entity", input.entity)
-    .replace("with", "with")
-    .replace("name", input.hook)
-    .replace(/\/+/gu, "/");
+  .replace("entity", input.entity)
+  .replace("with", "with")
+  .replace("name", input.hook)
+  .replace(/\/+/gu, "/");
   return new URL(`${path}.js`, options.hookRoot);
 }
 
@@ -193,36 +193,36 @@ function wrapEntityEvents(
   return {
     read: entity.read,
     write: {
-      by: async (name, where, context, patch, options) => {
+      by: async(name, where, context, patch, options) => {
         const result = await entity.write.by(name, where, context, patch, options);
         if (result.ok && result.data) {
           await onWriteEvent(onWrite, canonicalName(name), eventContext(context), result.data, "by");
         }
         return result;
       },
-      put: async (name, context, record, options) => {
+      put: async(name, context, record, options) => {
         const result = await entity.write.put(name, context, record, options);
         if (result.ok && result.data) {
           await onWriteEvent(onWrite, canonicalName(name), eventContext(context), result.data, "put");
         }
         return result;
       },
-      remove: async (name, context, id, options) => {
+      remove: async(name, context, id, options) => {
         const result = await entity.write.remove(name, context, id, options);
         if (result.ok) {
           await onWriteEvent(onWrite, canonicalName(name), eventContext(context), {
-            id,
-          }, "remove");
+              id,
+            }, "remove");
         }
         return result;
       },
-      removeMany: async (name, ids, context, options) => {
+      removeMany: async(name, ids, context, options) => {
         const result = await entity.write.removeMany(name, ids, context, options);
         if (result.ok) {
           await onWriteEvent(onWrite, canonicalName(name), eventContext(context), {
-            id: ids.join(","),
-            ids,
-          }, "removeMany");
+              id: ids.join(","),
+              ids,
+            }, "removeMany");
         }
         return result;
       },
@@ -245,10 +245,10 @@ async function onWriteEvent(
   operation: "put" | "by" | "remove" | "removeMany",
 ): Promise<void> {
   await onWrite?.({
-    context,
-    entity,
-    operation,
-    record,
+      context,
+      entity,
+      operation,
+      record,
   });
 }
 

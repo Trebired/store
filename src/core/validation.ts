@@ -16,7 +16,7 @@ function normalizeContext(entity: string, context: unknown): StoreResult<StoreCo
 
   if (!isPlainObject(context)) {
     return fail("store-invalid-context", "Store context must be an object.", {
-      entity,
+        entity,
     });
   }
 
@@ -28,7 +28,7 @@ function validateContext(
   definition: EntityDefinition,
   context: StoreContext,
   scope: "context" | "all" = "context",
-): StoreResult<true> | null {
+): StoreResult<true>|null {
   if (scope === "all") {
     return null;
   }
@@ -37,8 +37,8 @@ function validateContext(
     const value = context[key];
     if (value === undefined || value === null || value === "") {
       return fail("store-invalid-context", `Missing required context key: ${key}.`, {
-        entity,
-        field: key,
+          entity,
+          field: key,
       });
     }
   }
@@ -46,50 +46,50 @@ function validateContext(
   return null;
 }
 
-function validateId(entity: string, id: unknown, missingCode = "store-missing-id" as const): StoreResult<true> | null {
+function validateId(entity: string, id: unknown, missingCode = "store-missing-id"as const): StoreResult<true>|null {
   if (typeof id !== "string" || id.length === 0) {
     return fail(missingCode, "Store records require a non-empty string id.", {
-      entity,
+        entity,
     });
   }
 
   if (!VALID_ID.test(id)) {
     return fail("store-invalid-id", "Store record id contains unsupported characters.", {
-      entity,
-      id,
+        entity,
+        id,
     });
   }
 
   return null;
 }
 
-function validateRecord(entity: string, record: StoreRecord): StoreResult<true> | null {
+function validateRecord(entity: string, record: StoreRecord): StoreResult<true>|null {
   if (!record || typeof record !== "object" || Array.isArray(record)) {
     return fail("store-invalid-record", "Store record must be an object.", {
-      entity,
+        entity,
     });
   }
 
   return validateId(entity, record.id);
 }
 
-function validateWhere(entity: string, where: StoreWhere): StoreResult<true> | null {
+function validateWhere(entity: string, where: StoreWhere): StoreResult<true>|null {
   if (!where || typeof where !== "object" || Array.isArray(where)) {
     return fail("store-invalid-where", "Store where clause must be an object.", {
-      entity,
+        entity,
     });
   }
 
   if (Object.keys(where).length === 0) {
     return fail("store-invalid-where", "Store where clause cannot be empty.", {
-      entity,
+        entity,
     });
   }
 
   return null;
 }
 
-function validateOptionalWhere(entity: string, where: StoreWhere | undefined): StoreResult<true> | null {
+function validateOptionalWhere(entity: string, where: StoreWhere | undefined): StoreResult<true>|null {
   return where === undefined ? null : validateWhere(entity, where);
 }
 

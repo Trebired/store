@@ -1,6 +1,9 @@
 import { validatePlaceholderOrder } from "#zeealawo10hg";
 import type { RuntimePostgresQueryOptions } from "./types.js";
 
+const SQL_COMMENT_PATTERN = /--|\/\*/u;
+const SQL_INLINE_STRING_PATTERN = /'([^']|'')*'/u;
+
 function validateRuntimePostgresQuery(
   sql: string,
   params: readonly unknown[] = [],
@@ -54,7 +57,7 @@ function detectQueryCaller(): { file?: string; line?: number } {
 }
 
 function hasSqlComment(sql: string): boolean {
-  return /--|\/\*/u.test(sql);
+  return hasSqlPattern(sql, SQL_COMMENT_PATTERN);
 }
 
 function hasMultipleStatements(sql: string): boolean {
@@ -62,7 +65,11 @@ function hasMultipleStatements(sql: string): boolean {
 }
 
 function hasInlineStringLiteral(sql: string): boolean {
-  return /'([^']|'')*'/u.test(sql);
+  return hasSqlPattern(sql, SQL_INLINE_STRING_PATTERN);
+}
+
+function hasSqlPattern(sql: string, pattern: RegExp): boolean {
+  return pattern.test(sql);
 }
 
 export {

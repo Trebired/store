@@ -6,25 +6,25 @@ import type {
 } from "./types.js";
 
 const ENTITY_KEYS = new Set([
-  "aliases",
-  "context",
-  "metadata",
-  "modes",
-  "private",
-  "privateFields",
-  "required",
-  "storage",
-  "table",
+    "aliases",
+    "context",
+    "metadata",
+    "modes",
+    "private",
+    "privateFields",
+    "required",
+    "storage",
+    "table",
 ]);
 
 const MODE_KEYS = new Set([
-  "enrich",
-  "hooks",
-  "metadata",
-  "name",
-  "privateFields",
-  "select",
-  "with",
+    "enrich",
+    "hooks",
+    "metadata",
+    "name",
+    "privateFields",
+    "select",
+    "with",
 ]);
 
 interface RuntimeStorageDefaults {
@@ -34,8 +34,8 @@ interface RuntimeStorageDefaults {
 
 function normalizeRuntimeEntities(entities: RuntimeEntityRegistry, defaults: RuntimeStorageDefaults): EntityRegistry {
   return Object.fromEntries(Object.entries(entities).map(([name, definition]) => [
-    name,
-    normalizeRuntimeEntity(name, definition, defaults),
+        name,
+        normalizeRuntimeEntity(name, definition, defaults),
   ]));
 }
 
@@ -64,22 +64,22 @@ function defaultStorage(defaults: RuntimeStorageDefaults): string {
 
 function normalizeRuntimeModes(
   entity: string,
-  modes: Record<string, RuntimeEntityModeDefinition> | undefined,
+  modes: Record<string, RuntimeEntityModeDefinition>|undefined,
 ) {
   return Object.fromEntries(Object.entries(modes || {}).map(([mode, definition]) => [
-    mode,
-    {
-      enrich: definition.enrich || `${entity}.${mode}`,
-      hooks: normalizeModeHooks(definition.hooks || conciseHooks(definition)),
-      metadata: mergeMetadata(definition, definition.metadata),
-      name: definition.name,
-      privateFields: definition.privateFields,
-      select: definition.select as ((record: StoreRecord) => StoreRecord) | undefined,
-    },
+        mode,
+        {
+          enrich: definition.enrich || `${entity}.${mode}`,
+          hooks: normalizeModeHooks(definition.hooks || conciseHooks(definition)),
+          metadata: mergeMetadata(definition, definition.metadata),
+          name: definition.name,
+          privateFields: definition.privateFields,
+          select: definition.select as((record: StoreRecord) => StoreRecord) | undefined,
+        },
   ]));
 }
 
-function normalizeModeHooks(input: unknown): Record<string, boolean> | string[] {
+function normalizeModeHooks(input: unknown): Record<string, boolean>|string[] {
   if (Array.isArray(input)) {
     return input.map(normalizeHookName).filter(Boolean);
   }
@@ -102,8 +102,8 @@ function normalizeHookName(input: string): string {
 
 function mergeMetadata(
   source: Record<string, unknown>,
-  metadata: Record<string, unknown> | undefined,
-): Record<string, unknown> | undefined {
+  metadata: Record<string, unknown>|undefined,
+): Record<string, unknown>|undefined {
   const unknown = Object.fromEntries(Object.entries(source)
     .filter(([key, value]) => !ENTITY_KEYS.has(key) && !MODE_KEYS.has(key) && value !== undefined));
   return Object.keys(unknown).length || metadata ? {

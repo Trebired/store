@@ -13,16 +13,16 @@ async function repairOrphansAndDuplicates(
   const context = input.context || {};
   const scope = input.context ? "context" : "all";
   const [parents, children] = await Promise.all([
-    input.parent.list({
-      context,
-      mode: "raw",
-      scope,
-    }),
-    input.child.list({
-      context,
-      mode: "raw",
-      scope,
-    }),
+      input.parent.list({
+          context,
+          mode: "raw",
+          scope,
+      }),
+      input.child.list({
+          context,
+          mode: "raw",
+          scope,
+      }),
   ]);
   if (!parents.ok || !children.ok) {
     return emptySummary(true);
@@ -33,14 +33,14 @@ async function repairOrphansAndDuplicates(
   const orphanIds = findOrphanIds(childRows, parentIds, input.childParentKey);
   const duplicateIds = findDuplicateIds(childRows, input.uniqueBy, input.freshnessFields);
   const ids = [...new Set([
-    ...orphanIds,
-    ...duplicateIds,
+        ...orphanIds,
+        ...duplicateIds,
   ])];
   const removed = ids.length
-    ? await store.entity.write.removeMany(input.child.entity, ids, context, {
+  ? await store.entity.write.removeMany(input.child.entity, ids, context, {
       scope,
-    })
-    : null;
+  })
+  : null;
   const deletedTotal = removed?.ok ? removed.data?.removed || 0 : 0;
 
   return {
@@ -56,8 +56,8 @@ async function repairOrphansAndDuplicates(
 
 function findOrphanIds(rows: StoreRecord[], parentIds: Set<string>, childParentKey: string): string[] {
   return rows
-    .filter((row) => typeof row[childParentKey] === "string" && !parentIds.has(row[childParentKey] as string))
-    .map((row) => row.id);
+  .filter((row) => typeof row[childParentKey] === "string" && !parentIds.has(row[childParentKey] as string))
+  .map((row) => row.id);
 }
 
 function findDuplicateIds(
@@ -69,14 +69,14 @@ function findDuplicateIds(
   for (const row of rows) {
     const key = uniqueKey(row, uniqueBy);
     groups.set(key, [
-      ...(groups.get(key) || []),
-      row,
+        ...(groups.get(key) || []),
+        row,
     ]);
   }
 
   return [...groups.values()]
-    .filter((group) => group.length > 1)
-    .flatMap((group) => duplicateLosers(group, freshnessFields).map((row) => row.id));
+  .filter((group) => group.length > 1)
+  .flatMap((group) => duplicateLosers(group, freshnessFields).map((row) => row.id));
 }
 
 function duplicateLosers(group: StoreRecord[], freshnessFields: readonly string[]): StoreRecord[] {

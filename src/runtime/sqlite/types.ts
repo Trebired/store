@@ -13,7 +13,7 @@ export interface StoreRuntimeSqliteOptions {
   logOperations?: boolean;
   resultMode?: "throw" | "envelope";
   logger?: StoreLogger;
-  metrics?(event: RuntimeSqliteMetricsEvent): MaybePromise<void>;
+  metrics ? (event: RuntimeSqliteMetricsEvent) : MaybePromise<void>;
 }
 
 export interface RuntimeSqliteMetricsEvent {
@@ -37,7 +37,7 @@ export interface RuntimeSqliteMigrationApi {
 }
 
 export interface StoreRuntimeSqlite {
-  query<T = Record<string, unknown>>(
+  query<T=Record<string, unknown>>(
     sql: string,
     params?: readonly unknown[],
     options?: RuntimeSqliteQueryOptions,
@@ -45,7 +45,7 @@ export interface StoreRuntimeSqlite {
   init(): Promise<void>;
 }
 
-export type RuntimeSqliteQueryResult<T = Record<string, unknown>> = {
+export type RuntimeSqliteQueryResult<T=Record<string, unknown>> = {
   ok?: true;
   rows: T[];
   rowCount?: number;

@@ -1,45 +1,14 @@
 import { defineCodeDisciplineConfig } from "@trebired/code-discipline";
 
 export default defineCodeDisciplineConfig({
-  ignore: {
-    entries: [],
-    use_gitignore: true,
+  presets: {
+    use: ["trebired"],
   },
   rules: {
-    bannedFiles: {
-      patterns: [
-        { glob: "**/*.spec.ts" },
-        { glob: "**/*.spec.tsx" },
-      ],
-    },
     bannedPatterns: {
       patterns: [
         { value: "operlorn", allowedFiles: ["package.json"] },
-        { value: "trebired", allowedFiles: ["package.json", ".trebired/code-discipline/config.ts"] },
       ],
-    },
-    maxFileLines: {
-      max: 350,
-    },
-    maxFunctionLines: {
-      max: 50,
-    },
-    folderizeCompoundFiles: {},
-    removeComments: {
-    },
-    imports: {
-      removeDeadImports: true,
-      alias: {
-        strategy: "random",
-      },
-      allowRelative: ["./"],
-      output: {
-        type: "alias-map",
-      },
-      runtime: {
-        normalize: "relative-dot-prefix",
-        restoreAfterRun: false,
-      },
     },
   },
 });

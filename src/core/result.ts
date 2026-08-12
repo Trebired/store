@@ -4,9 +4,9 @@ import type { StoreErrorCode, StoreErrorDetails, StoreResult } from "#y31thwq3bd
 
 function ok<T>(data: T, message = "Success.", meta?: Record<string, unknown>): StoreResult<T> {
   return withStoreMessage(result.ok<T, StoreErrorDetails>(statusCodeFromMessage(message), {
-    data,
-    ...meta,
-  }), message);
+        data,
+        ...meta,
+    }), message);
 }
 
 function fail<T>(
@@ -16,20 +16,20 @@ function fail<T>(
   status = 400,
 ): StoreResult<T> {
   return withStoreMessage(result.error<T, StoreErrorDetails>(code, status, {
-    details: {
-      ...details,
-      code,
-      message,
-    },
-  }), message);
+        details: {
+          ...details,
+          code,
+          message,
+        },
+    }), message);
 }
 
 function storageFail<T>(cause: unknown, entity?: string, storage?: string): StoreResult<T> {
   return fail("store-storage-error", "Store storage operation failed.", {
-    cause,
-    entity,
-    storage,
-  }, 500);
+      cause,
+      entity,
+      storage,
+    }, 500);
 }
 
 function statusCodeFromMessage(message: string): string {

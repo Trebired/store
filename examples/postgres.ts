@@ -7,48 +7,48 @@ import {
 } from "#k8n9w5v1p2q0";
 
 const entities = defineEntityRegistry({
-  documents: {
-    context: ["workspaceId"],
-    storage: "postgres",
-    table: "documents",
-  },
+    documents: {
+      context: ["workspaceId"],
+      storage: "postgres",
+      table: "documents",
+    },
 });
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+    connectionString: process.env.DATABASE_URL,
 });
 
 const postgres = createPostgresJsonbStorageAdapter({
-  client: pool,
-  schema: "public",
+    client: pool,
+    schema: "public",
 });
 
 const store = createStore({
-  entities,
-  storages: {
-    postgres,
-  },
+    entities,
+    storages: {
+      postgres,
+    },
 });
 
 await postgres.ensureReadyFor?.({
-  definition: entities.documents,
-  name: "documents",
+    definition: entities.documents,
+    name: "documents",
 });
 
 await store.entity.write.put("documents", {
-  workspaceId: "workspace_1",
-}, {
-  id: "doc_1",
-  status: "active",
-  title: "PostgreSQL JSONB store",
+    workspaceId: "workspace_1",
+  }, {
+    id: "doc_1",
+    status: "active",
+    title: "PostgreSQL JSONB store",
 });
 
 const all = await store.entity.read.all("documents", {
-  workspaceId: "workspace_1",
-}, {
-  where: {
-    status: "active",
-  },
+    workspaceId: "workspace_1",
+  }, {
+    where: {
+      status: "active",
+    },
 });
 
 console.log(all.data);

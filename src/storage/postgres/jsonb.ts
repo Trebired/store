@@ -7,7 +7,17 @@ import type {
   StoreRecord,
   StoreWhere,
 } from "#y31thwq3bdf0";
-import { quoteIdentifier, validatePlaceholderOrder, validateSqlIdentifier } from "./validation.js";
+import { isPlainObject } from "#yfg488ybfy5n";
+import {
+  applyStorageContext,
+  buildStorageWhere,
+} from "#9193g93dz8pe";
+import {
+  quoteIdentifier,
+  validatePlaceholderOrder,
+  validatePostgresSchema,
+  validateSqlIdentifier,
+} from "./validation.js";
 
 type Row = {
   id: string;
@@ -15,30 +25,30 @@ type Row = {
 };
 
 function createPostgresJsonbStorageAdapter(options: PostgresJsonbAdapterOptions): StorageAdapter {
-  const schema = validateSchema(options.schema);
+  const schema = validatePostgresSchema(options.schema);
 
   return {
     all: (entity, context, readOptions) => queryMany(options, schema, entity, {}, context, readOptions),
-    by: async (entity, where, context, readOptions) => {
+    by: async(entity, where, context, readOptions) => {
       const rows = await queryMany(options, schema, entity, where, context, readOptions, 1);
       return rows[0] ?? null;
     },
     byIds: (entity, ids, context, readOptions) => queryMany(options, schema, entity, { id: ids }, context, readOptions),
-    count: async (entity, context, readOptions) => {
+    count: async(entity, context, readOptions) => {
       const sql = buildSelectSql(schema, entity, {}, context, readOptions, "count(*)::int as count", undefined, false);
-      const result = await options.client.query<{ count: number }>(sql.text, sql.params);
+      const result = await options.client.query<{count:number}>(sql.text, sql.params);
       return Number(result.rows[0]?.count || 0);
     },
-    hasAny: async (entity, context, readOptions) => {
+    hasAny: async(entity, context, readOptions) => {
       const rows = await queryMany(options, schema, entity, {}, context, readOptions, 1);
       return rows.length > 0;
     },
-    put: async (entity, context, record) => {
+    put: async(entity, context, record) => {
       const table = qualifiedTable(schema, entity);
       const stored = applyContext(record, entity, context);
       const sql = `insert into ${table} (id, record) values ($1, $2::jsonb)
-        on conflict (id) do update set record = excluded.record
-        returning id, record`;
+      on conflict (id) do update set record = excluded.record
+      returning id, record`;
       assertPlaceholders(sql, [stored.id, JSON.stringify(stored)]);
       const result = await options.client.query<Row>(sql, [stored.id, JSON.stringify(stored)]);
       return normalizeRow(result.rows[0]);
@@ -58,8 +68,8 @@ async function removeOne(
   readOptions?: StorageReadOptions,
 ): Promise<boolean> {
   const result = await deleteRows(options, schema, entity, context, {
-    id,
-  }, readOptions);
+      id,
+    }, readOptions);
   return result.rows.length > 0;
 }
 
@@ -72,8 +82,8 @@ async function removeMany(
   readOptions?: StorageReadOptions,
 ) {
   const result = await deleteRows(options, schema, entity, context, {
-    id: ids,
-  }, readOptions);
+      id: ids,
+    }, readOptions);
   return {
     ids,
     missing: ids.length - result.rows.length,
@@ -91,10 +101,10 @@ async function deleteRows(
   readOptions?: StorageReadOptions,
 ) {
   const table = qualifiedTable(schema, entity);
-  const where = buildWhere(entity, whereInput, context, readOptions);
+  const where = buildStorageWhere(entity, whereInput, context, readOptions, pushJsonFilter);
   const sql = `delete from ${table} ${where.sql} returning id`;
   assertPlaceholders(sql, where.params);
-  return options.client.query<{ id: string }>(sql, where.params);
+  return options.client.query<{id:string}>(sql, where.params);
 }
 
 async function ensureReadyFor(
@@ -105,16 +115,6 @@ async function ensureReadyFor(
   const table = qualifiedTable(schema, entity);
   const sql = `create table if not exists ${table} (id text primary key, record jsonb not null)`;
   await options.client.query(sql, []);
-}
-
-function validateSchema(schemaInput?: string): string {
-  const schema = schemaInput || "public";
-  const schemaError = validateSqlIdentifier(schema);
-  if (schemaError) {
-    throw new Error(schemaError.message);
-  }
-
-  return schema;
 }
 
 function buildSelectSql(
@@ -131,7 +131,7 @@ function buildSelectSql(
   text: string;
 } {
   const table = qualifiedTable(schema, entity);
-  const clause = buildWhere(entity, where, context, options);
+  const clause = buildStorageWhere(entity, where, context, options, pushJsonFilter);
   const order = includeSort ? buildOrderBy(options?.sort || []) : "";
   const bounded = normalizeLimit(limit ?? options?.limit);
   const limitClause = bounded === null ? "" : ` limit ${bounded}`;
@@ -163,16 +163,16 @@ function buildOrderBy(sort: readonly string[]): string {
   }
 
   const parts = sort.map((spec) => {
-    const [field, direction] = spec.split(":");
-    const err = validateSqlIdentifier(field || "");
-    if (err) {
-      throw new Error(err.message);
-    }
-    if (direction !== "asc" && direction !== "desc") {
-      throw new Error("PostgreSQL JSONB adapter sort direction must be asc or desc.");
-    }
+      const [field, direction] = spec.split(":");
+      const err = validateSqlIdentifier(field || "");
+      if (err) {
+        throw new Error(err.message);
+      }
+      if (direction !== "asc" && direction !== "desc") {
+        throw new Error("PostgreSQL JSONB adapter sort direction must be asc or desc.");
+      }
 
-    return `record->>'${field}' ${direction}`;
+      return `record->>'${field}' ${direction}`;
   });
 
   return ` order by ${parts.join(", ")}`;
@@ -190,39 +190,6 @@ function normalizeLimit(limit: number | undefined): number | null {
   return limit;
 }
 
-function buildWhere(
-  entity: ResolvedEntity,
-  where: StoreWhere,
-  context: StoreContext,
-  options?: StorageReadOptions,
-): {
-  params: unknown[];
-  sql: string;
-} {
-  const parts: string[] = [];
-  const params: unknown[] = [];
-  const scoped = options?.scope !== "all";
-
-  for (const [field, value] of Object.entries(options?.where || {})) {
-    pushJsonFilter(parts, params, field, value);
-  }
-
-  for (const [field, value] of Object.entries(where)) {
-    pushJsonFilter(parts, params, field, value);
-  }
-
-  if (scoped) {
-    for (const key of entity.definition.context || []) {
-      pushJsonFilter(parts, params, key, context[key]);
-    }
-  }
-
-  return {
-    params,
-    sql: parts.length ? `where ${parts.join(" and ")}` : "",
-  };
-}
-
 function pushJsonFilter(parts: string[], params: unknown[], field: string, value: unknown): void {
   const err = validateSqlIdentifier(field);
   if (err) {
@@ -237,14 +204,14 @@ function pushJsonFilter(parts: string[], params: unknown[], field: string, value
 
   if (isPlainObject(value)) {
     params.push(JSON.stringify({
-      [field]: value,
+          [field]: value,
     }));
     parts.push(`record @> $${params.length}::jsonb`);
     return;
   }
 
   params.push(JSON.stringify({
-    [field]: value,
+        [field]: value,
   }));
   parts.push(`record @> $${params.length}::jsonb`);
 }
@@ -258,16 +225,7 @@ function qualifiedTable(schema: string, entity: ResolvedEntity): string {
   return `${quoteIdentifier(schema)}.${quoteIdentifier(entity.definition.table)}`;
 }
 
-function applyContext(record: StoreRecord, entity: ResolvedEntity, context: StoreContext): StoreRecord {
-  const out = {
-    ...record,
-  };
-  for (const key of entity.definition.context || []) {
-    out[key] = context[key];
-  }
-
-  return out;
-}
+const applyContext = applyStorageContext;
 
 function normalizeRow(row: Row | undefined): StoreRecord {
   if (!row) {
@@ -282,10 +240,6 @@ function assertPlaceholders(sql: string, params: unknown[]): void {
   if (error) {
     throw new Error(error.message);
   }
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 export {

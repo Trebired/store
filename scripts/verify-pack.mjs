@@ -26,11 +26,11 @@ async function main() {
 
 async function resetTempRoot() {
   await fs.rm(tempRoot, {
-    force: true,
-    recursive: true,
+      force: true,
+      recursive: true,
   });
   await fs.mkdir(npmCacheDir, {
-    recursive: true,
+      recursive: true,
   });
 }
 
@@ -38,8 +38,8 @@ function packPackage() {
   const stdoutPath = path.join(tempRoot, "pack-output.json");
   try {
     execFileSync("sh", ["-lc", `npm pack --json > ${shellEscape(stdoutPath)}`], {
-      ...createNpmOptions(rootDir),
-      stdio: ["ignore", "inherit", "inherit"],
+        ...createNpmOptions(rootDir),
+        stdio: ["ignore", "inherit", "inherit"],
     });
   } catch (error) {
     restorePackageJsonFromBackup();
@@ -47,8 +47,8 @@ function packPackage() {
   }
 
   const stdout = execFileSync("cat", [stdoutPath], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "inherit"],
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "inherit"],
   });
   const [entry] = JSON.parse(stdout);
   if (!entry?.filename) {
@@ -60,13 +60,13 @@ function packPackage() {
 
 function listTarEntries(tarballPath) {
   return new Set(execFileSync("tar", ["-tf", tarballPath], {
-    encoding: "utf8",
-  }).split("\n").map((entry) => entry.trim()).filter(Boolean));
+        encoding: "utf8",
+    }).split("\n").map((entry) => entry.trim()).filter(Boolean));
 }
 
 function readPackedPackageJson(tarballPath) {
   return JSON.parse(execFileSync("tar", ["-xOf", tarballPath, "package/package.json"], {
-    encoding: "utf8",
+        encoding: "utf8",
   }));
 }
 
@@ -109,46 +109,46 @@ function validatePackedImports(packageJson, tarballEntries) {
 async function runConsumerSmokeTest(tarballPath, packageName) {
   const consumerDir = path.join(tempRoot, "consumer");
   await fs.mkdir(consumerDir, {
-    recursive: true,
+      recursive: true,
   });
   await fs.writeFile(path.join(consumerDir, "package.json"), JSON.stringify({
-    dependencies: {
-      "@package/logger-adapter": `file:${loggerAdapterDir}`,
-      "@package/result": `file:${resultDir}`,
-      [packageName]: `file:${tarballPath}`,
-    },
-    devDependencies: {
-      "@types/node": `file:${nodeTypesDir}`,
-    },
-    name: "store-pack-smoke",
-    private: true,
-    type: "module",
-  }, null, 2));
+        dependencies: {
+          "@package/logger-adapter": `file:${loggerAdapterDir}`,
+          "@package/result": `file:${resultDir}`,
+          [packageName]: `file:${tarballPath}`,
+        },
+        devDependencies: {
+          "@types/node": `file:${nodeTypesDir}`,
+        },
+        name: "store-pack-smoke",
+        private: true,
+        type: "module",
+      }, null, 2));
   await fs.writeFile(path.join(consumerDir, "index.ts"), [
-    `import { createMemoryStorageAdapter, createStore, defineEntityRegistry } from ${JSON.stringify(packageName)};`,
-    "const entities = defineEntityRegistry({ things: { table: \"things\", storage: \"memory\" } });",
-    "const store = createStore({ entities, storages: { memory: createMemoryStorageAdapter() } });",
-    "console.log(Boolean(store));",
-  ].join("\n"));
+      `import { createMemoryStorageAdapter, createStore, defineEntityRegistry } from ${JSON.stringify(packageName)};`,
+      "const entities = defineEntityRegistry({ things: { table: \"things\", storage: \"memory\" } });",
+      "const store = createStore({ entities, storages: { memory: createMemoryStorageAdapter() } });",
+      "console.log(Boolean(store));",
+    ].join("\n"));
   await fs.writeFile(path.join(consumerDir, "tsconfig.json"), JSON.stringify({
-    compilerOptions: {
-      lib: ["ES2020"],
-      module: "ESNext",
-      moduleResolution: "Bundler",
-      noEmit: true,
-      target: "ES2020",
-      types: ["node"],
-    },
-    include: ["./index.ts"],
-  }, null, 2));
+        compilerOptions: {
+          lib: ["ES2020"],
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          noEmit: true,
+          target: "ES2020",
+          types: ["node"],
+        },
+        include: ["./index.ts"],
+      }, null, 2));
 
   execFileSync("npm", ["install", "--ignore-scripts"], {
-    ...createNpmOptions(consumerDir),
-    stdio: "inherit",
+      ...createNpmOptions(consumerDir),
+      stdio: "inherit",
   });
   execFileSync(process.execPath, [tscBin, "-p", "tsconfig.json"], {
-    cwd: consumerDir,
-    stdio: "inherit",
+      cwd: consumerDir,
+      stdio: "inherit",
   });
 }
 
@@ -175,10 +175,10 @@ function createNpmOptions(cwd) {
 function restorePackageJsonFromBackup() {
   try {
     execFileSync("test", ["-f", packageJsonBackupPath], {
-      stdio: "ignore",
+        stdio: "ignore",
     });
     execFileSync("cp", [packageJsonBackupPath, path.join(rootDir, "package.json")], {
-      stdio: "ignore",
+        stdio: "ignore",
     });
   } catch {
   }
