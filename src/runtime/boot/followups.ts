@@ -23,7 +23,6 @@ const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
 interface BootFollowUpDispatcherOptions {
   logger?: StoreLogger;
   loggerAdapter?: StoreLoggerAdapter;
-  group?: string;
   guards?: Record<string, BootFollowUpGuard>;
   handlers: Record<string, BootFollowUpHandler>;
 }
@@ -73,7 +72,7 @@ type BootFollowUpDispatcherRegistry = RuntimeFollowUpRegistry& {
 
 function createBootFollowUpDispatcher(options: BootFollowUpDispatcherOptions): BootFollowUpDispatcherRegistry {
   const logger = resolveLogger(options.logger, options.loggerAdapter);
-  const group = options.group || buildStoreLogGroup("boot");
+  const group = buildStoreLogGroup("boot");
   const registry = {} as BootFollowUpDispatcherRegistry;
   const dispatch = async(input: Parameters<RuntimeFollowUp>[0]) => {
     return dispatchFollowUp(input, options, logger, group);

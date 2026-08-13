@@ -807,7 +807,6 @@ import {
 
 const followUps = createBootFollowUpDispatcher({
   logger: console,
-  group: "trebired.store.boot",
   guards: {
     readyTarget: {
       timeoutMs: 30_000,
