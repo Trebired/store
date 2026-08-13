@@ -32,6 +32,7 @@
   "#jk4ufstswpvh": "./src/repair/orphans.ts",
   "#k6jeu3jyjwht": "./src/runtime/postgres.ts",
   "#k8n9w5v1p2q0": "./src/index.ts",
+  "#l2u6xfqhgcmr": "./.trebired/logger/config.ts",
   "#l51pnb6j0sxx": "./src/core/write.ts",
   "#mq84z0z7glm9": "./src/storage/memory.ts",
   "#oz5habwl5021": "./src/cache/cache.ts",
