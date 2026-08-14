@@ -4,13 +4,17 @@ All notable changes to `@trebired/store` will be documented here.
 
 This project follows semantic versioning once published.
 
+## 2.0.1
+
+- Updated the shared Trebired config dependency to `@trebired/configs@^0.1.2`.
+
 ## 2.0.0
 
 - Removed the boot follow-up dispatcher `group` override so store boot follow-up diagnostics stay package-owned.
 
 ## 1.0.14
 
-- Adopted the external `@trebired/code-discipline-config` preset and updated Code Discipline tooling to `@trebired/code-discipline@^6.0.9`.
+- Adopted the external `@trebired/configs` preset and updated Code Discipline tooling to `@trebired/code-discipline@^6.0.9`.
 
 ## 1.0.13
 
