@@ -24,6 +24,7 @@ type StoreMemoCacheReadKeyInput = Partial<RuntimeMemoReadKeyInput>& {
 
 interface StoreMemoCacheSetOptions {
   ttlMs?: number;
+  version?: number;
 }
 
 function createStoreMemoCache(memo: StoreRuntimeMemo): StoreMemoCacheFacade {

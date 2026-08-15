@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.1
+
+- Allowed memo cache set options to carry an existing cache version hint.
+
 ## 2.1.0
 
 - Added the application store runtime layer for package-owned boot reporting, startup timing hooks, postgres env defaults, memo cache facade, request loader invalidation, and lazy record views.
