@@ -1,6 +1,6 @@
 {
   "name": "@trebired/store",
-  "version": "2.0.4",
+  "version": "2.1.0",
   "description": "Reusable generic entity store for Bun with typed entity registries, SQLite, scoped JSONB storage, modes, request loaders, cache invalidation, and sub-entity reads.",
   "type": "module",
   "private": false,

@@ -1,4 +1,5 @@
 import { result } from "@package/result";
+import { hookResultData } from "#4ehy9amylf43";
 import { buildStoreLogGroup, resolveLogger } from "#3ug859kbex8c";
 import { getPath } from "#yfg488ybfy5n";
 import type {
@@ -217,6 +218,18 @@ function createApi(input: Parameters<RuntimeFollowUp>[0]): BootFollowUpHandlerAp
   };
 }
 
+function finishBootFollowUp(
+  api: Pick<BootFollowUpHandlerApi, "failed"|"succeeded">,
+  output: unknown,
+): RuntimeBootFollowUpOutcome {
+  return output && typeof output === "object" &&
+    ((output as { ok?: unknown }).ok === true || (output as { noop?: unknown }).noop === true)
+  ? api.succeeded(output)
+  : api.failed(output);
+}
+
+const bootResultData = hookResultData;
+
 function normalizeOutcome(output: unknown, input: BootFollowUpHandlerInput): RuntimeBootFollowUpOutcome {
   if (isBootFollowUpOutcome(output)) {
     return {
@@ -327,9 +340,11 @@ function sleep(ms: number): Promise<void> {
 export {
   BOOT_FOLLOW_UP_DISPATCH,
   bootFollowUpFailed,
+  bootResultData,
   bootFollowUpSkipped,
   bootFollowUpSucceeded,
   createBootFollowUpDispatcher,
+  finishBootFollowUp,
   readBootBoolean,
 };
 export type {

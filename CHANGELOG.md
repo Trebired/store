@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.0
+
+- Added the application store runtime layer for package-owned boot reporting, startup timing hooks, postgres env defaults, memo cache facade, request loader invalidation, and lazy record views.
+- Added generic boot helpers for default entity assignment, runtime status reset, auto-start follow-ups, follow-up result normalization, and result data unwrapping.
+- Added package-owned hook read helpers, request context helpers, null redis memo adapter, postgres index-map normalization, and write limiter utilities so apps keep only domain-specific store wiring.
+
 ## 2.0.4
 
 - Updated shared utilities to `@trebired/utils@^0.4.4`.

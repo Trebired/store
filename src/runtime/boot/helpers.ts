@@ -77,6 +77,58 @@ function bootFollowUpWhen(
   };
 }
 
+function bootAutoStartFollowUp(call: string, options: {
+    policyField?: string;
+    status?: string;
+    statusField?: string;
+    truthy?: readonly unknown[];
+    config?: StoreWhere;
+  } = {}): RuntimeBootAction {
+  return bootFollowUpWhen(call, [
+      {
+        equals: options.status || "stopped",
+        field: options.statusField || "status",
+      },
+      bootTruthyCondition(
+        options.policyField || "runtime.policy.auto_start_on_platform_boot",
+        options.truthy,
+      ),
+    ], {
+      config: options.config,
+  });
+}
+
+function bootDefaultEntity(
+  type: string,
+  entityId: string,
+  field = "entity",
+): RuntimeBootAction {
+  return bootSetIfMissing({
+      [field]: {
+        entity_id: entityId,
+        type,
+      },
+  });
+}
+
+function bootResetRuntimeStatus(
+  statuses: readonly unknown[],
+  nextStatus = "stopped",
+  options: {
+    statusField?: string;
+    unset?: readonly string[];
+    set?: StoreWhere;
+    setIfMissing?: StoreWhere;
+  } = {},
+): RuntimeBootAction {
+  return bootResetStatus(statuses, nextStatus, {
+      field: options.statusField,
+      set: options.set,
+      setIfMissing: options.setIfMissing,
+      unset: options.unset || ["runtime_status", "runtime_pid"],
+  });
+}
+
 function mergeBootOptions(...items: readonly(StoreRuntimeBootOptions | null | undefined)[]): StoreRuntimeBootOptions {
   const out: StoreRuntimeBootOptions = {};
   for (const item of items) {
@@ -94,8 +146,11 @@ function mergeBootOptions(...items: readonly(StoreRuntimeBootOptions | null | un
 }
 
 export {
+  bootAutoStartFollowUp,
+  bootDefaultEntity,
   bootFollowUpWhen,
   bootResetStatus,
+  bootResetRuntimeStatus,
   bootRewrite,
   bootSet,
   bootSetIfMissing,

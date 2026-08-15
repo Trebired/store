@@ -279,6 +279,16 @@ function createRedisMemoAdapter(input: RuntimeRedisMemoAdapterInput) {
   };
 }
 
+function createNullRedisMemoAdapter() {
+  return {
+    delete: async(_key: string) => {},
+    get: async <T > (_key: string): Promise<T|null> => null,
+    publish: async(_channel: string, _message: string) => {},
+    set: async <T > (_key: string, _value: T) => {},
+    subscribe: async(_channel: string, _handler: (message: string) => void) => {},
+  };
+}
+
 function parseInvalidation(message: string): { entity: string; invalidatedAt: number; version?: number } {
   try {
     const value = JSON.parse(message) as Record<string, unknown>;
@@ -333,6 +343,7 @@ function filterObject(value: Record<string, unknown>, ignoredKeys: Set<string>):
 }
 
 export {
+  createNullRedisMemoAdapter,
   createRedisMemoAdapter,
   createRuntimeMemo,
 };

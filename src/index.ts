@@ -8,7 +8,10 @@ export {
 } from "./runtime/hydration.js";
 export {
   bootFollowUpWhen,
+  bootAutoStartFollowUp,
+  bootDefaultEntity,
   bootResetStatus,
+  bootResetRuntimeStatus,
   bootRewrite,
   bootSet,
   bootSetIfMissing,
@@ -19,9 +22,11 @@ export {
 } from "./runtime/boot/helpers.js";
 export {
   bootFollowUpFailed,
+  bootResultData,
   bootFollowUpSkipped,
   bootFollowUpSucceeded,
   createBootFollowUpDispatcher,
+  finishBootFollowUp,
   readBootBoolean,
 } from "./runtime/boot/followups.js";
 export {
@@ -42,7 +47,23 @@ export {
   stringField,
   uniqueStringArrayField,
 } from "./runtime/boot/rewriter.js";
-export { createRedisMemoAdapter } from "./runtime/memo.js";
+export {
+  createNullRedisMemoAdapter,
+  createRedisMemoAdapter,
+} from "./runtime/memo.js";
+export {
+  createStoreApplicationRuntime,
+  logStoreBootResult,
+  normalizePostgresIndexMap,
+  summarizeStoreBootResult,
+} from "./runtime/application.js";
+export { createStoreMemoCache } from "./runtime/cache.js";
+export {
+  hookReadAll,
+  hookReadById,
+  hookResultData,
+} from "./runtime/hook-reads.js";
+export { createStoreWriteLimiter } from "./runtime/write-limiter.js";
 export {
   defineEntityRegistry,
   resolveEntityDefinition,
@@ -51,10 +72,12 @@ export {
 } from "./entity/registry.js";
 export {
   clearRequestEntityLoaders,
+  bindExpressStoreRequestContext,
   getOrCreateRequestLoader,
   getOrCreateRequestValue,
   getStoreRequestContext,
   runWithStoreRequestContext,
+  storeRequestKey,
 } from "./request/context.js";
 export { createMemoryStorageAdapter } from "./storage/memory.js";
 export { createPostgresJsonbStorageAdapter } from "./storage/postgres/jsonb.js";
@@ -196,6 +219,35 @@ export type {
   StoreRuntimePostgresPoolOptions,
   StoreRuntimeWriteEvent,
 } from "./runtime/types.js";
+
+export type {
+  StoreApplicationEnv,
+  StoreApplicationPostgresOptions,
+  StoreApplicationRuntimeFacade,
+  StoreApplicationRuntimeOptions,
+  StoreBootResultSummary,
+  StorePostgresIndexMap,
+  StorePostgresIndexMapItem,
+  StoreStartupBridge,
+  StoreStartupMark,
+  StoreStartupMarkDone,
+} from "./runtime/application.js";
+
+export type {
+  StoreMemoCacheFacade,
+  StoreMemoCacheReadKeyInput,
+  StoreMemoCacheSetOptions,
+} from "./runtime/cache.js";
+
+export type {
+  StoreHookReadApi,
+} from "./runtime/hook-reads.js";
+
+export type {
+  StoreWriteLimiter,
+  StoreWriteLimiterOptions,
+  StoreWriteLimiterRedisAdapter,
+} from "./runtime/write-limiter.js";
 
 export type {
   SqliteDatabase,
