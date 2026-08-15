@@ -1,7 +1,18 @@
-import { result } from "@package/result";
 import { hookResultData } from "#4ehy9amylf43";
 import { buildStoreLogGroup, resolveLogger } from "#3ug859kbex8c";
-import { getPath } from "#yfg488ybfy5n";
+import {
+  bootFollowUpFailed,
+  bootFollowUpSkipped,
+  bootFollowUpSucceeded,
+  type BootFollowUpOutcomeDetails,
+} from "./outcomes.js";
+import {
+  readBootBoolean,
+  readBootRecord,
+  readBootRecordBoolean,
+  readBootRecordById,
+  type BootEntityReaderInput,
+} from "./read.js";
 import type {
   RuntimeBootFollowUpOutcome,
   RuntimeFollowUp,
@@ -11,19 +22,20 @@ import type {
   MaybePromise,
   NormalizedStoreLogger,
   StoreContext,
+  StoreContextInput,
   StoreLogger,
   StoreLoggerAdapter,
+  StoreReadOptions,
   StoreRecord,
   StoreWhere,
 } from "#y31thwq3bdf0";
 
 const BOOT_FOLLOW_UP_DISPATCH = Symbol.for ("@package/store/boot-follow-up-dispatch");
-const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
-const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
 
 interface BootFollowUpDispatcherOptions {
   logger?: StoreLogger;
   loggerAdapter?: StoreLoggerAdapter;
+  reader?: BootEntityReaderInput;
   guards?: Record<string, BootFollowUpGuard>;
   handlers: Record<string, BootFollowUpHandler>;
 }
@@ -56,17 +68,30 @@ interface BootFollowUpHandlerInput {
 }
 interface BootFollowUpHandlerApi {
   readBoolean(record: StoreRecord, path: string, fallback?: boolean): boolean;
+  readById(
+    entity: string,
+    id: string,
+    context?: StoreContextInput,
+    options?: StoreReadOptions,
+  ): Promise<StoreRecord|null>;
+  readRecord(
+    entity: string,
+    where: StoreWhere,
+    context?: StoreContextInput,
+    options?: StoreReadOptions,
+  ): Promise<StoreRecord|null>;
+  readRecordBoolean(
+    entity: string,
+    where: StoreWhere,
+    path: string,
+    fallback?: boolean,
+    context?: StoreContextInput,
+    options?: StoreReadOptions,
+  ): Promise<boolean>;
   skipped(details?: BootFollowUpOutcomeDetails): RuntimeBootFollowUpOutcome;
   succeeded(value?: unknown): RuntimeBootFollowUpOutcome;
   failed(error?: unknown): RuntimeBootFollowUpOutcome;
 }
-type BootFollowUpOutcomeDetails = {
-  recordId?: string;
-  message?: string;
-  error_code?: string;
-  result?: unknown;
-  details?: unknown;
-};
 type BootFollowUpDispatcherRegistry = RuntimeFollowUpRegistry& {
   [BOOT_FOLLOW_UP_DISPATCH]: RuntimeFollowUp;
 };
@@ -102,7 +127,7 @@ async function dispatchFollowUp(
   group: string,
 ): Promise<RuntimeBootFollowUpOutcome> {
   const handler = options.handlers[base.call];
-  const api = createApi(base);
+  const api = createApi(base, options.reader);
   const input = {
     ...base,
     api,
@@ -206,10 +231,17 @@ async function pollReadyGuard(
   });
 }
 
-function createApi(input: Parameters<RuntimeFollowUp>[0]): BootFollowUpHandlerApi {
+function createApi(
+  input: Parameters<RuntimeFollowUp>[0],
+  reader: BootEntityReaderInput,
+): BootFollowUpHandlerApi {
   return {
     failed: (error) => bootFollowUpFailed(input.call, input.entity, error, input.record.id),
+    readById: (entity, id, context, options) => readBootRecordById(reader, entity, id, context, options),
     readBoolean: readBootBoolean,
+    readRecord: (entity, where, context, options) => readBootRecord(reader, entity, where, context, options),
+    readRecordBoolean: (entity, where, path, fallback, context, options) =>
+    readBootRecordBoolean(reader, entity, where, path, fallback, context, options),
     skipped: (details) => bootFollowUpSkipped(input.call, input.entity, {
         recordId: input.record.id,
         ...details,
@@ -244,85 +276,6 @@ function isBootFollowUpOutcome(value: unknown): value is RuntimeBootFollowUpOutc
   return Boolean(value && typeof value === "object" && "call"in value && "entity"in value && "skipped"in value);
 }
 
-function bootFollowUpSkipped(
-  call: string,
-  entity: string,
-  details: BootFollowUpOutcomeDetails = {},
-): RuntimeBootFollowUpOutcome {
-  const envelope = result.noop("boot-follow-up-skipped", {
-      details: details.details,
-      meta: {
-        message: details.message || "Boot follow-up skipped.",
-      },
-  });
-  return {
-    ...envelope,
-    call,
-    entity,
-    error_code: details.error_code || envelope.status_code,
-    message: details.message || "Boot follow-up skipped.",
-    recordId: details.recordId,
-    result: details.result,
-    skipped: true,
-  };
-}
-
-function bootFollowUpSucceeded(
-  call: string,
-  entity: string,
-  value?: unknown,
-  recordId?: string,
-): RuntimeBootFollowUpOutcome {
-  const envelope = result.ok("boot-follow-up-completed", {
-      data: value ?? null,
-  });
-  return {
-    ...envelope,
-    call,
-    entity,
-    message: "Boot follow-up completed.",
-    recordId,
-    result: value,
-    skipped: false,
-  };
-}
-
-function bootFollowUpFailed(
-  call: string,
-  entity: string,
-  error?: unknown,
-  recordId?: string,
-): RuntimeBootFollowUpOutcome {
-  const message = error instanceof Error ? error.message : "Boot follow-up failed.";
-  const envelope = result.error("boot-follow-up-failed", 500, {
-      details: {
-        cause: error,
-        message,
-      },
-  });
-  return {
-    ...envelope,
-    call,
-    entity,
-    message,
-    recordId,
-    result: error,
-    skipped: false,
-  };
-}
-
-function readBootBoolean(record: StoreRecord, path: string, fallback = false): boolean {
-  const value = getPath(record, path);
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value !== 0;
-  if (typeof value !== "string") return fallback;
-  const normalized = value.trim().toLowerCase();
-  if (!normalized) return fallback;
-  if (TRUE_VALUES.has(normalized)) return true;
-  if (FALSE_VALUES.has(normalized)) return false;
-  return fallback;
-}
-
 function logMeta(input: BootFollowUpHandlerInput, error?: unknown, targetId?: string): Record<string, unknown> {
   return {
     call: input.call,
@@ -345,9 +298,13 @@ export {
   bootFollowUpSucceeded,
   createBootFollowUpDispatcher,
   finishBootFollowUp,
+  readBootRecord,
+  readBootRecordBoolean,
+  readBootRecordById,
   readBootBoolean,
 };
 export type {
+  BootEntityReaderInput,
   BootFollowUpDispatcherOptions,
   BootFollowUpDispatcherRegistry,
   BootFollowUpFunction,

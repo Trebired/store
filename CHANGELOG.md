@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.0
+
+- Added boot follow-up read helpers and injected record/policy readers into the follow-up API so application boot handlers only keep domain-specific decisions and actions.
+
 ## 2.1.1
 
 - Allowed memo cache set options to carry an existing cache version hint.

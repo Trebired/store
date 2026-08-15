@@ -27,6 +27,9 @@ export {
   bootFollowUpSucceeded,
   createBootFollowUpDispatcher,
   finishBootFollowUp,
+  readBootRecord,
+  readBootRecordBoolean,
+  readBootRecordById,
   readBootBoolean,
 } from "./runtime/boot/followups.js";
 export {
@@ -234,6 +237,19 @@ export type {
 } from "./runtime/application.js";
 
 export type {
+  BootEntityReaderInput,
+  BootFollowUpDispatcherOptions,
+  BootFollowUpDispatcherRegistry,
+  BootFollowUpFunction,
+  BootFollowUpGuard,
+  BootFollowUpHandler,
+  BootFollowUpHandlerApi,
+  BootFollowUpHandlerConfig,
+  BootFollowUpHandlerInput,
+  BootFollowUpOutcomeDetails,
+} from "./runtime/boot/followups.js";
+
+export type {
   StoreMemoCacheFacade,
   StoreMemoCacheReadKeyInput,
   StoreMemoCacheSetOptions,
@@ -266,18 +282,6 @@ export type {
   StoreRuntimeSqlite,
   StoreRuntimeSqliteOptions,
 } from "./runtime/sqlite/types.js";
-
-export type {
-  BootFollowUpDispatcherOptions,
-  BootFollowUpDispatcherRegistry,
-  BootFollowUpFunction,
-  BootFollowUpGuard,
-  BootFollowUpHandler,
-  BootFollowUpHandlerApi,
-  BootFollowUpHandlerConfig,
-  BootFollowUpHandlerInput,
-  BootFollowUpOutcomeDetails,
-} from "./runtime/boot/followups.js";
 
 export type {
   BootArrayFieldOptions,
