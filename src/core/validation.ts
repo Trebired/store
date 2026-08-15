@@ -5,6 +5,7 @@ import type {
   StoreResult,
   StoreWhere,
 } from "#y31thwq3bdf0";
+import { isPlainObject } from "@trebired/utils";
 import { fail, ok } from "./result.js";
 
 const VALID_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/u;
@@ -103,15 +104,6 @@ function applyRequiredContext(record: StoreRecord, definition: EntityDefinition,
   }
 
   return out;
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
 }
 
 export {

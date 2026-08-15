@@ -5,6 +5,7 @@ import {
   isPlainObject,
   isStoreRecord,
 } from "#yfg488ybfy5n";
+import { toTrimmedString } from "@trebired/utils";
 import type {
   RuntimeBootActionContext,
   RuntimeRewrite,
@@ -253,8 +254,7 @@ function cloneValue<T>(value: T): T {
 }
 
 function cleanString(value: unknown): string | undefined {
-  if (value === undefined || value === null) return undefined;
-  const text = String(value).trim();
+  const text = toTrimmedString(value);
   return text || undefined;
 }
 

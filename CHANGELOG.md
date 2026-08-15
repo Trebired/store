@@ -4,6 +4,11 @@ All notable changes to `@trebired/store` will be documented here.
 
 This project follows semantic versioning once published.
 
+## 2.0.3
+
+- Updated shared utilities to `@trebired/utils@^0.4.3`.
+- Replaced local validation/value helpers and package metadata parsing with shared utilities.
+
 ## 2.0.1
 
 - Updated the shared Trebired config dependency to `@trebired/configs@^0.1.2`.

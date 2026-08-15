@@ -1,4 +1,5 @@
 import type { StoreRecord } from "#y31thwq3bdf0";
+import { isRecord as isPlainObject } from "@trebired/utils";
 
 function getPath(row: StoreRecord | Record<string, unknown>, path: string): unknown {
   return path.split(".").reduce<unknown>((current, key) => {
@@ -8,10 +9,6 @@ function getPath(row: StoreRecord | Record<string, unknown>, path: string): unkn
 
 function identity<TValue>(value: TValue): TValue {
   return value;
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function isStoreRecord(value: unknown): value is StoreRecord {
