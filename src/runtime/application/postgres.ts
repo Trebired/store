@@ -34,6 +34,7 @@ function createApplicationPostgresOptions(
       ...(postgres.indexes || []),
     ],
     logOperations: postgres.logOperations ?? envText(env, "STORE_LOG_OPS").trim() === "1",
+    logSql: postgres.logSql ?? envText(env, "STORE_LOG_SQL").trim() === "1",
     logger: postgres.logger,
     metrics: postgres.metrics,
     migrations: postgres.migrations,

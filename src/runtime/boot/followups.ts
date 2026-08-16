@@ -54,9 +54,6 @@ interface BootFollowUpGuard {
   pollMs?: number;
   resolveTarget(input: BootFollowUpHandlerInput): MaybePromise<string|null|undefined>;
   isReady(targetId: string, input: BootFollowUpHandlerInput): MaybePromise<boolean>;
-  onWaitMessage?: string;
-  onReadyMessage?: string;
-  onTimeoutMessage?: string;
 }
 interface BootFollowUpHandlerInput {
   call: string;
@@ -134,14 +131,14 @@ async function dispatchFollowUp(
   };
   if (!handler) {
     return bootFollowUpSkipped(base.call, base.entity, {
-        message: "Boot follow-up call is not registered.",
+        message: "Boot follow-up call is not registered",
         recordId: base.record.id,
     });
   }
   try {
     return await runRegisteredHandler(handler, input, options, logger, group);
   } catch (error) {
-    logger?.error(group, "Boot follow-up failed.", logMeta(input, error));
+    logger?.error(group, "follow-up failed", logMeta(input, error));
     return bootFollowUpFailed(base.call, base.entity, error, base.record.id);
   }
 }
@@ -157,7 +154,7 @@ async function runRegisteredHandler(
   const policy = readPolicy(config.policy, input.record);
   if (policy === false) {
     return input.api.skipped({
-        message: "Boot follow-up policy is disabled.",
+        message: "Boot follow-up policy is disabled",
     });
   }
   const guardSkip = await runGuard(config.guard, input, options, logger, group);
@@ -189,7 +186,7 @@ async function runGuard(
   const guard = options.guards?.[name];
   if (!guard) {
     return input.api.skipped({
-        message: `Boot follow-up guard "${name}" is not registered.`,
+        message: `Boot follow-up guard "${name}" is not registered`,
     });
   }
   return runReadyGuard(guard, input, logger, group);
@@ -204,7 +201,7 @@ async function runReadyGuard(
   const targetId = await guard.resolveTarget(input);
   if (!targetId) return null;
   if (await guard.isReady(targetId, input)) return null;
-  logger?.info(group, guard.onWaitMessage || "Waiting for boot follow-up guard.", logMeta(input, null, targetId));
+  logger?.info(group, "waiting for follow-up guard", logMeta(input, null, targetId));
   return pollReadyGuard(guard, input, logger, group, targetId);
 }
 
@@ -221,13 +218,13 @@ async function pollReadyGuard(
   while (Date.now() < deadline) {
     await sleep(pollMs);
     if (await guard.isReady(targetId, input)) {
-      logger?.info(group, guard.onReadyMessage || "Boot follow-up guard became ready.", logMeta(input, null, targetId));
+      logger?.info(group, "follow-up guard became ready", logMeta(input, null, targetId));
       return null;
     }
   }
-  logger?.warn(group, guard.onTimeoutMessage || "Boot follow-up guard timed out.", logMeta(input, null, targetId));
+  logger?.warn(group, "follow-up guard timed out", logMeta(input, null, targetId));
   return input.api.skipped({
-      message: guard.onTimeoutMessage || "Boot follow-up guard timed out.",
+      message: "Boot follow-up guard timed out",
   });
 }
 

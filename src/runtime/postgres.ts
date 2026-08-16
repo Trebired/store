@@ -15,13 +15,13 @@ import {
 } from "#zeealawo10hg";
 import {
   detectQueryCaller,
-  redactDatabaseUrl,
   validateRuntimePostgresQuery,
 } from "./postgres-safety.js";
 import {
   createRuntimeMetricEvent,
   hashText,
   runtimeQueryErrorCode,
+  sqlStatementKind,
   summarizeSql,
 } from "./sql.js";
 
@@ -79,9 +79,12 @@ function createPool(options: StoreRuntimePostgresOptions, logger: NormalizedStor
       max: options.pool?.max,
       statement_timeout: options.pool?.statementTimeoutMs,
   });
-  logger?.info(POSTGRES_LOG_GROUP, "Postgres pool created.", {
-      databaseUrl: redactDatabaseUrl(options.databaseUrl),
-      pool: options.pool || {},
+  logger?.info(POSTGRES_LOG_GROUP, "pool created", {
+      connection_timeout_ms: options.pool?.connectionTimeoutMs,
+      database_url_configured: Boolean(options.databaseUrl),
+      idle_timeout_ms: options.pool?.idleTimeoutMs,
+      max: options.pool?.max,
+      statement_timeout_ms: options.pool?.statementTimeoutMs,
   });
   return pool;
 }
@@ -99,20 +102,21 @@ async function runQuery<T>(
     return handleQueryError<T>(invalid, config);
   }
   const started = Date.now();
-  const caller = detectQueryCaller();
   try {
-    const result = await queryClient<T>(client, sql, params, caller, options, config, logger);
-    logQuerySuccess(logger, sql, params, Date.now() - started, caller, options, config);
-    void config.metrics?.(createRuntimeMetricEvent(Date.now() - started, options, true, rowCount(result)));
+    const result = await queryClient<T>(client, sql, params, options, config, logger);
+    const elapsedMs = Date.now() - started;
+    const resultRows = rowCount(result);
+    logQuerySuccess(logger, sql, params, elapsedMs, resultRows, options, config);
+    void config.metrics?.(createRuntimeMetricEvent(elapsedMs, options, true, resultRows));
     return envelopeSuccess(result, config);
   } catch (error) {
-    logger?.error(POSTGRES_LOG_GROUP, "Postgres query failed.", {
-        caller,
+    const elapsedMs = Date.now() - started;
+    logger?.error(POSTGRES_LOG_GROUP, "query failed", {
+        ...queryLogMetadata(sql, params, elapsedMs, 0, options, config),
+        caller: detectQueryCaller(),
         error,
-        name: options?.name,
-        operation: options?.operation,
     });
-    void config.metrics?.(createRuntimeMetricEvent(Date.now() - started, options, false, 0));
+    void config.metrics?.(createRuntimeMetricEvent(elapsedMs, options, false, 0));
     return handleQueryError<T>(error, config);
   }
 }
@@ -121,7 +125,6 @@ async function queryClient<T>(
   client: RuntimePostgresClient,
   sql: string,
   params: readonly unknown[],
-  caller: ReturnType<typeof detectQueryCaller>,
   options: RuntimePostgresQueryOptions | undefined,
   config: StoreRuntimePostgresOptions,
   logger: NormalizedStoreLogger | null,
@@ -131,7 +134,7 @@ async function queryClient<T>(
   }
   const waitStarted = Date.now();
   const pooled = await client.connect();
-  logPoolWait(client, Date.now() - waitStarted, caller, options, config, logger);
+  logPoolWait(client, Date.now() - waitStarted, options, config, logger);
   try {
     return await pooled.query<T>(sql, [...params]);
   } finally {
@@ -177,12 +180,11 @@ async function initPostgres(
 ): Promise<void> {
   await runInternal(client, "select 1", [], logger, "Postgres first connection succeeded.");
   await runInternal(client, `create schema if not exists ${quoteIdentifier(schema)}`, [], logger);
-  for (const definition of Object.values(entities).filter((item) => item.storage === "postgres")) {
-    await createEntityTable(client, schema, definition.table, logger);
-  }
-  for (const index of options.indexes || []) {
-    await createExpressionIndex(client, schema, index.table, index.expression, index.name, index.method || "btree", logger);
-  }
+  await Promise.all(Object.values(entities)
+    .filter((item) => item.storage === "postgres")
+    .map((definition) => createEntityTable(client, schema, definition.table, logger)));
+  await Promise.all((options.indexes || [])
+    .map((index) => createExpressionIndex(client, schema, index.table, index.expression, index.name, index.method || "btree", logger)));
   for (const migrate of options.migrations || []) {
     await migrate({
         query: (sql, params = []) => runQuery(client, sql, params, {
@@ -234,7 +236,7 @@ async function runInternal(
 ): Promise<void> {
   await client.query(sql, [...params]);
   if (message) {
-    logger?.info(POSTGRES_LOG_GROUP, message, {});
+    logger?.info(POSTGRES_LOG_GROUP, normalizeLogMessage(message), {});
   }
 }
 
@@ -256,7 +258,7 @@ function logQuerySuccess(
   sql: string,
   params: readonly unknown[],
   elapsedMs: number,
-  caller: ReturnType<typeof detectQueryCaller>,
+  resultRows: number,
   options: RuntimePostgresQueryOptions | undefined,
   config: StoreRuntimePostgresOptions,
 ): void {
@@ -264,20 +266,16 @@ function logQuerySuccess(
   if (!slow && !config.logOperations) {
     return;
   }
-  logger?.[slow ? "warn" : "info"](POSTGRES_LOG_GROUP, slow ? "Postgres slow query completed." : "Postgres query completed.", {
-      caller,
-      elapsedMs,
-      name: options?.name,
-      operation: options?.operation,
-      params: params.length,
-      sql: summarizeSql(sql),
-  });
+  logger?.[slow ? "warn" : "info"](
+    POSTGRES_LOG_GROUP,
+    slow ? "slow query completed" : "query completed",
+    queryLogMetadata(sql, params, elapsedMs, resultRows, options, config),
+  );
 }
 
 function logPoolWait(
   client: RuntimePostgresClient,
   elapsedMs: number,
-  caller: ReturnType<typeof detectQueryCaller>,
   options: RuntimePostgresQueryOptions | undefined,
   config: StoreRuntimePostgresOptions,
   logger: NormalizedStoreLogger | null,
@@ -285,9 +283,8 @@ function logPoolWait(
   if (elapsedMs < 100) {
     return;
   }
-  logger?.warn(POSTGRES_LOG_GROUP, "Postgres pool wait completed.", {
-      caller,
-      elapsedMs,
+  logger?.warn(POSTGRES_LOG_GROUP, "pool wait completed", {
+      elapsed_ms: elapsedMs,
       idle: client.idleCount || 0,
       name: options?.name,
       operation: options?.operation,
@@ -305,10 +302,34 @@ const errorCode = runtimeQueryErrorCode;
 
 function attachPoolErrorLogger(client: RuntimePostgresClient, logger: NormalizedStoreLogger | null): void {
   client.on?.("error", (error) => {
-      logger?.error(POSTGRES_LOG_GROUP, "Postgres pool error.", {
+      logger?.error(POSTGRES_LOG_GROUP, "pool error", {
           error,
       });
   });
+}
+
+function queryLogMetadata(
+  sql: string,
+  params: readonly unknown[],
+  elapsedMs: number,
+  resultRows: number,
+  options: RuntimePostgresQueryOptions | undefined,
+  config: StoreRuntimePostgresOptions,
+): Record<string, unknown> {
+  return {
+    elapsed_ms: elapsedMs,
+    name: options?.name,
+    operation: options?.operation,
+    params_count: params.length,
+    row_count: resultRows,
+    sql_hash: hashText(sql),
+    ...(config.logSql ? { sql: summarizeSql(sql) } : {}),
+    statement: sqlStatementKind(sql),
+  };
+}
+
+function normalizeLogMessage(message: string): string {
+  return message.replace(/\.+$/u, "").replace(/^Postgres\s+/u, "").replace(/^./u, (value) => value.toLowerCase());
 }
 
 function tableName(schema: string, tableInput: string): string {

@@ -46,11 +46,12 @@ function createPostgresJsonbStorageAdapter(options: PostgresJsonbAdapterOptions)
     put: async(entity, context, record) => {
       const table = qualifiedTable(schema, entity);
       const stored = applyContext(record, entity, context);
+      const storedJson = JSON.stringify(stored);
       const sql = `insert into ${table} (id, record) values ($1, $2::jsonb)
       on conflict (id) do update set record = excluded.record
       returning id, record`;
-      assertPlaceholders(sql, [stored.id, JSON.stringify(stored)]);
-      const result = await options.client.query<Row>(sql, [stored.id, JSON.stringify(stored)]);
+      assertPlaceholders(sql, [stored.id, storedJson]);
+      const result = await options.client.query<Row>(sql, [stored.id, storedJson]);
       return normalizeRow(result.rows[0]);
     },
     remove: (entity, context, id, readOptions) => removeOne(options, schema, entity, context, id, readOptions),
@@ -172,7 +173,7 @@ function buildOrderBy(sort: readonly string[]): string {
         throw new Error("PostgreSQL JSONB adapter sort direction must be asc or desc.");
       }
 
-      return `record->>'${field}' ${direction}`;
+      return field === "id" ? `id ${direction}` : `record->>'${field}' ${direction}`;
   });
 
   return ` order by ${parts.join(", ")}`;
@@ -196,6 +197,11 @@ function pushJsonFilter(parts: string[], params: unknown[], field: string, value
     throw new Error(err.message);
   }
 
+  if (field === "id") {
+    pushIdFilter(parts, params, value);
+    return;
+  }
+
   if (Array.isArray(value)) {
     params.push(value);
     parts.push(`record->>'${field}' = any($${params.length}::text[])`);
@@ -214,6 +220,17 @@ function pushJsonFilter(parts: string[], params: unknown[], field: string, value
         [field]: value,
   }));
   parts.push(`record @> $${params.length}::jsonb`);
+}
+
+function pushIdFilter(parts: string[], params: unknown[], value: unknown): void {
+  if (Array.isArray(value)) {
+    params.push(value.map((item) => String(item)));
+    parts.push(`id = any($${params.length}::text[])`);
+    return;
+  }
+
+  params.push(String(value));
+  parts.push(`id = $${params.length}`);
 }
 
 function qualifiedTable(schema: string, entity: ResolvedEntity): string {

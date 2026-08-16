@@ -11,6 +11,7 @@ export interface StoreRuntimeSqliteOptions {
   migrations?: readonly RuntimeSqliteMigration[];
   slowQueryMs?: number;
   logOperations?: boolean;
+  logSql?: boolean;
   resultMode?: "throw" | "envelope";
   logger?: StoreLogger;
   metrics ? (event: RuntimeSqliteMetricsEvent) : MaybePromise<void>;

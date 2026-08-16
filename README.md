@@ -721,7 +721,7 @@ Runtime Postgres:
 - redacts database URLs in logs
 - validates application queries for empty SQL, comments, multiple statements, placeholder order, and inline read/write literals
 - supports `resultMode: "envelope"` for `{ ok, rows, rowCount }` success and structured `{ ok: false, error_code, message }` failures
-- logs pool creation, first connection, pool waits, pool errors, slow queries, query failures, and optional operation logs
+- logs pool creation, first connection, pool waits, pool errors, slow queries, query failures, and optional operation logs with compact structured metadata
 - calls an optional query metrics callback
 - creates the schema, JSONB entity tables, default GIN indexes, extra expression indexes, and safe migration hooks
 - wires the package PostgreSQL JSONB adapter internally
@@ -734,7 +734,7 @@ Runtime SQLite:
 - validates table names, JSON path fields, sort fields, and generated SQL
 - supports `where`, `options.where`, `byIds`, scoped context, `scope: "all"`, `limit`, `sort`, and native bulk removal
 - supports `resultMode: "envelope"` for structured query validation failures
-- logs slow queries and optional operation logs through `@trebired/logger-adapter`
+- logs slow queries and optional operation logs through `@trebired/logger-adapter` with compact structured metadata
 - calls an optional query metrics callback
 - creates SQLite-backed entity tables, expression indexes, and safe migration hooks during `runtime.onBoot()`
 - wires the package SQLite JSON adapter internally
@@ -817,9 +817,6 @@ const followUps = createBootFollowUpDispatcher({
       async isReady(targetId) {
         return checkTargetReady(targetId);
       },
-      onWaitMessage: "Waiting for boot follow-up target.",
-      onReadyMessage: "Boot follow-up target became ready.",
-      onTimeoutMessage: "Boot follow-up target did not become ready in time.",
     },
   },
   handlers: {

@@ -70,14 +70,9 @@ async function put<TRecord extends StoreRecord>(
     const stored = applyRequiredContext(record, resolved.value.definition, ctx) as TRecord;
     const out = await storage.value.put(resolved.value, ctx, stored, writeOptions);
     invalidate(runtime, resolved.value.name);
-    runtime.logger?.info(buildStoreLogGroup("write"), "Store record saved.", {
-        entity: resolved.value.name,
-        id: out.id,
-        operation: "put",
-    });
     return ok(out as TRecord, "Store record saved.");
   } catch (error) {
-    runtime.logger?.error(buildStoreLogGroup("write"), "Store record save failed.", {
+    runtime.logger?.error(buildStoreLogGroup("write"), "record save failed", {
         entity: resolved.value.name,
         error,
         operation: "put",
@@ -146,15 +141,9 @@ async function remove(
   try {
     const removed = await storage.value.remove(resolved.value, ctx, id, writeOptions);
     invalidate(runtime, resolved.value.name);
-    runtime.logger?.info(buildStoreLogGroup("write"), "Store record remove completed.", {
-        entity: resolved.value.name,
-        id,
-        operation: "remove",
-        removed,
-    });
     return ok(removed, removed ? "Store record removed." : "Store record was already absent.");
   } catch (error) {
-    runtime.logger?.error(buildStoreLogGroup("write"), "Store record remove failed.", {
+    runtime.logger?.error(buildStoreLogGroup("write"), "record remove failed", {
         entity: resolved.value.name,
         error,
         id,
@@ -195,15 +184,9 @@ async function removeMany(
   try {
     const removed = await removeManyFromStorage(storage.value, resolved.value, ctx, ids, writeOptions);
     invalidate(runtime, resolved.value.name);
-    runtime.logger?.info(buildStoreLogGroup("write"), "Store records bulk remove completed.", {
-        entity: resolved.value.name,
-        operation: "removeMany",
-        removed: removed.removed,
-        requested: removed.requested,
-    });
     return ok(removed, "Store records bulk remove completed.");
   } catch (error) {
-    runtime.logger?.error(buildStoreLogGroup("write"), "Store records bulk remove failed.", {
+    runtime.logger?.error(buildStoreLogGroup("write"), "records bulk remove failed", {
         entity: resolved.value.name,
         error,
         operation: "removeMany",

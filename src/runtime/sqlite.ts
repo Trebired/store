@@ -16,6 +16,7 @@ import {
   createRuntimeMetricEvent,
   hashText,
   runtimeQueryErrorCode,
+  sqlStatementKind,
   summarizeSql,
 } from "./sql.js";
 import { ensureSqliteRecordTable } from "#bt4xhvf2n19p";
@@ -50,7 +51,7 @@ function createRuntimeSqlite(
 function resolveDatabase(options: StoreRuntimeSqliteOptions, logger: NormalizedStoreLogger | null): SqliteDatabase {
   if (options.database) return options.database;
   if (options.path) {
-    logger?.info(SQLITE_LOG_GROUP, "SQLite database configured.", {
+    logger?.info(SQLITE_LOG_GROUP, "database configured", {
         path: options.path,
     });
     return createLazyBunSqliteDatabase(options.path);
@@ -93,20 +94,20 @@ async function runQuery<T>(
   if (invalid) return handleQueryError<T>(invalid, config);
   if (!client) return handleQueryError<T>(new Error("SQLite runtime is not configured."), config);
   const started = Date.now();
-  const caller = detectQueryCaller();
   try {
     const result = await queryClient<T>(client, sql, params, options);
-    logQuerySuccess(logger, sql, params, Date.now() - started, caller, options, config);
-    void config.metrics?.(metricEvent(Date.now() - started, options, true, result.rowCount));
+    const elapsedMs = Date.now() - started;
+    logQuerySuccess(logger, sql, params, elapsedMs, result.rowCount, options, config);
+    void config.metrics?.(metricEvent(elapsedMs, options, true, result.rowCount));
     return envelopeSuccess(result.rows, result.rowCount, config);
   } catch (error) {
-    logger?.error(SQLITE_LOG_GROUP, "SQLite query failed.", {
-        caller,
+    const elapsedMs = Date.now() - started;
+    logger?.error(SQLITE_LOG_GROUP, "query failed", {
+        ...queryLogMetadata(sql, params, elapsedMs, 0, options, config),
+        caller: detectQueryCaller(),
         error,
-        name: options?.name,
-        operation: options?.operation,
     });
-    void config.metrics?.(metricEvent(Date.now() - started, options, false, 0));
+    void config.metrics?.(metricEvent(elapsedMs, options, false, 0));
     return handleQueryError<T>(error, config);
   }
 }
@@ -174,7 +175,7 @@ async function runInternal(
   message?: string,
 ): Promise<void> {
   await sqliteAll(client, sql, params);
-  if (message) logger?.info(SQLITE_LOG_GROUP, message, {});
+  if (message) logger?.info(SQLITE_LOG_GROUP, normalizeLogMessage(message), {});
 }
 
 function validateRuntimeSqliteQuery(
@@ -261,20 +262,41 @@ function logQuerySuccess(
   sql: string,
   params: readonly unknown[],
   elapsedMs: number,
-  caller: ReturnType<typeof detectQueryCaller>,
+  resultRows: number,
   options: RuntimeSqliteQueryOptions | undefined,
   config: StoreRuntimeSqliteOptions,
 ): void {
   const slow = elapsedMs >= (config.slowQueryMs ?? DEFAULT_SLOW_QUERY_MS);
   if (!slow && !config.logOperations) return;
-  logger?.[slow ? "warn" : "info"](SQLITE_LOG_GROUP, slow ? "SQLite slow query completed." : "SQLite query completed.", {
-      caller,
-      elapsedMs,
-      name: options?.name,
-      operation: options?.operation,
-      params: params.length,
-      sql: summarizeSql(sql),
-  });
+  logger?.[slow ? "warn" : "info"](
+    SQLITE_LOG_GROUP,
+    slow ? "slow query completed" : "query completed",
+    queryLogMetadata(sql, params, elapsedMs, resultRows, options, config),
+  );
+}
+
+function queryLogMetadata(
+  sql: string,
+  params: readonly unknown[],
+  elapsedMs: number,
+  resultRows: number,
+  options: RuntimeSqliteQueryOptions | undefined,
+  config: StoreRuntimeSqliteOptions,
+): Record<string, unknown> {
+  return {
+    elapsed_ms: elapsedMs,
+    name: options?.name,
+    operation: options?.operation,
+    params_count: params.length,
+    row_count: resultRows,
+    sql_hash: hashText(sql),
+    ...(config.logSql ? { sql: summarizeSql(sql) } : {}),
+    statement: sqlStatementKind(sql),
+  };
+}
+
+function normalizeLogMessage(message: string): string {
+  return message.replace(/\.+$/u, "").replace(/^SQLite\s+/u, "").replace(/^./u, (value) => value.toLowerCase());
 }
 
 const metricEvent = createRuntimeMetricEvent;

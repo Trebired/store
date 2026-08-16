@@ -91,6 +91,7 @@ export interface StoreRuntimePostgresOptions {
   migrations?: readonly RuntimePostgresMigration[];
   slowQueryMs?: number;
   logOperations?: boolean;
+  logSql?: boolean;
   resultMode?: "throw" | "envelope";
   logger?: StoreLogger;
   metrics ? (event: RuntimePostgresMetricsEvent) : MaybePromise<void>;

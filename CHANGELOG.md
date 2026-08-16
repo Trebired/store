@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.0.0
+
+- Removed routine write and cache invalidation success logs from normal store operation.
+- Reworked Postgres and SQLite query diagnostics to use compact structured metadata without raw SQL or caller stack data on successful queries.
+- Removed caller-defined boot follow-up guard log messages so store logs keep package-owned messages and app details stay in metadata.
+- Avoided query caller stack capture on the successful query hot path.
+
 ## 2.2.3
 
 - Removed routine successful read logs so cache keys and large read inputs do not clutter normal logs.

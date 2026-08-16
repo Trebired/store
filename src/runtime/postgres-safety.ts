@@ -49,7 +49,7 @@ function redactDatabaseUrl(value: string | undefined): string | undefined {
 function detectQueryCaller(): { file?: string; line?: number } {
   const stack = new Error().stack?.split("\n").slice(2) || [];
   const frame = stack.find((line) => !line.includes("/runtime/postgres"));
-  const match = frame?.match(/(?:\()?(.*):(\d+):(\d+)\)?$/u);
+  const match = frame?.match(/\((.*):(\d+):(\d+)\)$/u) || frame?.match(/\s+at\s+(.*):(\d+):(\d+)$/u);
   return {
     file: match?.[1],
     line: match?.[2] ? Number(match[2]) : undefined,

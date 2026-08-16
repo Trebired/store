@@ -80,7 +80,7 @@ class StoreRuntime {
           cache: cached.inspection,
         } : undefined);
     } catch (error) {
-      this.logger?.error(buildStoreLogGroup("read"), "Store read failed.", {
+      this.logger?.error(buildStoreLogGroup("read"), "read failed", {
           entity: entity.name,
           error,
           operation,
@@ -124,9 +124,6 @@ class StoreRuntime {
 
   invalidate(entity: string): void {
     this.cache.invalidateEntity(entity);
-    this.logger?.info(buildStoreLogGroup("cache"), "Store entity cache invalidated.", {
-        entity,
-    });
   }
 
   toStorageOptions(options: StoreReadOptions) {

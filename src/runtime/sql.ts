@@ -32,6 +32,10 @@ function summarizeSql(sql: string): string {
   return sql.replace(/\s+/gu, " ").trim().slice(0, 240);
 }
 
+function sqlStatementKind(sql: string): string {
+  return sql.trim().split(/\s+/u)[0]?.toLowerCase() || "";
+}
+
 function hashText(value: string): string {
   let hash = 0;
   for (const char of value) {
@@ -44,5 +48,6 @@ export {
   createRuntimeMetricEvent,
   hashText,
   runtimeQueryErrorCode,
+  sqlStatementKind,
   summarizeSql,
 };
