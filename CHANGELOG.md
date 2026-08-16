@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.3
+
+- Removed routine successful read logs so cache keys and large read inputs do not clutter normal logs.
+- Reduced the store creation log metadata to cache status and entity count.
+
 ## 2.2.0
 
 - Added boot follow-up read helpers and injected record/policy readers into the follow-up API so application boot handlers only keep domain-specific decisions and actions.

@@ -32,9 +32,9 @@ class StoreRuntime {
     this.cache = new StoreCache(options.cache);
     this.logger = resolveLogger(options.logger, options.loggerAdapter);
     this.resolveStorage = createStorageResolver(options);
-    this.logger?.info(buildStoreLogGroup("create"), "Store created.", {
-        cacheEnabled: this.cache.inspect().enabled,
-        entities: Object.keys(options.entities),
+    this.logger?.info(buildStoreLogGroup("create"), "store created", {
+        cache_enabled: this.cache.inspect().enabled,
+        entity_count: Object.keys(options.entities).length,
     });
   }
 
@@ -76,12 +76,6 @@ class StoreRuntime {
       const mode = readOptions.mode || "full";
       const key = this.cache.createKey(entity.name, operation, createReadKeyInput(input, readOptions), context, mode);
       const cached = await this.cache.read(entity.name, key, load, readOptions.cacheBypass || readOptions.cache === false);
-      this.logger?.info(buildStoreLogGroup("read"), "Store read completed.", {
-          cache: cached.inspection,
-          entity: entity.name,
-          mode,
-          operation,
-      });
       return ok(cached.value, "Store read completed.", readOptions.cacheMeta ? {
           cache: cached.inspection,
         } : undefined);
