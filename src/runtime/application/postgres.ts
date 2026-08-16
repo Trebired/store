@@ -80,7 +80,9 @@ function envText(env: StoreApplicationEnv, key: string): string {
 }
 
 function envNumber(env: StoreApplicationEnv, key: string, fallback: number, min: number): number {
-  const value = toFiniteNumber(envText(env, key));
+  const text = envText(env, key);
+  if (!text) return fallback;
+  const value = toFiniteNumber(text);
   if (value == null) return fallback;
   return Math.max(min, Math.trunc(value));
 }

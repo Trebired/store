@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.0.1
+
+- Fixed numeric environment fallback parsing so missing `DB_SLOW_MS` keeps the default slow-query threshold instead of becoming `0`.
+
 ## 3.0.0
 
 - Removed routine write and cache invalidation success logs from normal store operation.
