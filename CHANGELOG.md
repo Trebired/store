@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.0.2
+
+- Removed dead `config.creator` from `package.json`.
+- Updated shared utilities to `@trebired/utils@^0.6.0` and replaced the removed `readPackageIdentity()` with `readPackageJsonUrl()` + `readOrganizationIdentity()` + `packageSlug()`/`joinLogGroup()`. No change to exported metadata values.
+
 ## 3.0.1
 
 - Fixed numeric environment fallback parsing so missing `DB_SLOW_MS` keeps the default slow-query threshold instead of becoming `0`.
