@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.0
+
+- Added request-scoped deduplication of identical storage reads. `entity.read.by`/`read.all`/`count` now issue a single underlying query per identical `(entity, operation, where, context, storage options)` within one request context, instead of one query per distinct read `mode`. Reads that differ only by `mode` (e.g. `raw` vs `view`) previously produced separate cache keys and therefore duplicate SQL for the same row; each caller still gets its own independently mapped/enriched copy because `mapRow` already clones before enriching. Deduplication reuses the existing per-request loader map, so it is invalidated by writes through `clearRequestEntityLoaders`, and is skipped entirely when `cacheBypass` is set.
+
 ## 3.0.2
 
 - Removed dead `config.creator` from `package.json`.

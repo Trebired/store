@@ -14,6 +14,7 @@ import type {
 } from "#y31thwq3bdf0";
 import { assertReadableRawRecord, markEnrichedRecord } from "./enriched.js";
 import { buildStoreLogGroup, resolveLogger } from "#3ug859kbex8c";
+import { getOrCreateRequestLoader } from "#g8u7bg42czn8";
 import { redactPrivateFields } from "./private.js";
 import { fail, ok, storageFail } from "./result.js";
 
@@ -124,6 +125,24 @@ class StoreRuntime {
 
   invalidate(entity: string): void {
     this.cache.invalidateEntity(entity);
+  }
+
+  loadStorageRead<T>(
+    entity: ResolvedEntity,
+    operation: string,
+    input: unknown,
+    context: StoreContext,
+    readOptions: StoreReadOptions,
+    load: () => Promise<T>,
+  ): Promise<T> {
+    if (readOptions.cacheBypass) return load();
+    return getOrCreateRequestLoader({
+        context,
+        entity: entity.name,
+        input,
+        operation,
+        storage: this.toStorageOptions(readOptions),
+      }, load) as Promise<T>;
   }
 
   toStorageOptions(options: StoreReadOptions) {

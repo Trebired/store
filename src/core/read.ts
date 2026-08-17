@@ -39,7 +39,14 @@ async function readAll<TRecord extends StoreRecord>(
   }
 
   return runtime.cachedRead(resolved.value, "all", readOptions.where ?? {}, ctx, readOptions, async() => {
-      const rows = await storage.value.all(resolved.value, ctx, runtime.toStorageOptions(readOptions));
+      const rows = await runtime.loadStorageRead(
+        resolved.value,
+        "all",
+        readOptions.where ?? {},
+        ctx,
+        readOptions,
+        () => storage.value.all(resolved.value, ctx, runtime.toStorageOptions(readOptions)),
+      );
       return runtime.mapRows<TRecord>(resolved.value, rows, ctx, readOptions);
   });
 }
@@ -74,7 +81,14 @@ async function readBy<TRecord extends StoreRecord>(
   }
 
   return runtime.cachedRead(resolved.value, "by", where, ctx, readOptions, async() => {
-      const row = await storage.value.by(resolved.value, where, ctx, runtime.toStorageOptions(readOptions));
+      const row = await runtime.loadStorageRead(
+        resolved.value,
+        "by",
+        where,
+        ctx,
+        readOptions,
+        () => storage.value.by(resolved.value, where, ctx, runtime.toStorageOptions(readOptions)),
+      );
       return row ? runtime.mapRow<TRecord>(resolved.value, row, ctx, readOptions) : null;
   });
 }
@@ -107,7 +121,14 @@ async function count(
   }
 
   return runtime.cachedRead(resolved.value, "count", readOptions.where ?? {}, ctx, readOptions, () => {
-      return storage.value.count(resolved.value, ctx, runtime.toStorageOptions(readOptions));
+      return runtime.loadStorageRead(
+        resolved.value,
+        "count",
+        readOptions.where ?? {},
+        ctx,
+        readOptions,
+        () => storage.value.count(resolved.value, ctx, runtime.toStorageOptions(readOptions)),
+      );
   });
 }
 
