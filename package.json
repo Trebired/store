@@ -8,7 +8,7 @@
     }
   },
   "name": "@trebired/store",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "Reusable generic entity store for Bun with typed entity registries, SQLite, scoped JSONB storage, modes, request loaders, cache invalidation, and sub-entity reads.",
   "type": "module",
   "private": false,
@@ -42,7 +42,7 @@
     "verify:pack": "bun ./scripts/verify-pack.mjs"
   },
   "dependencies": {
-    "@package/logger-adapter": "npm:@trebired/logger-adapter@^0.4.6",
+    "@package/logger-adapter": "npm:@trebired/logger-adapter@^0.4.17",
     "@package/result": "npm:@trebired/result@^1.1.6",
     "@trebired/utils": "^0.6.0",
     "pg": "^8.22.0"
