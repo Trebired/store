@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.2.0
+
+- Updated the `@trebired/utils` dependency range to `^0.9.0`, keeping every `@trebired` package on one range so a project cannot resolve two copies.
+
 ## 3.1.2
 
 ### Changed
