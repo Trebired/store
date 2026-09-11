@@ -4,6 +4,9 @@ import {
   createStoreRuntime,
   relation,
 } from "#k8n9w5v1p2q0";
+import { resolveLogger } from "@package/logger-adapter";
+
+const log = resolveLogger({ source: "@trebired/store" });
 
 const runtime = createStoreRuntime({
     boot: {
@@ -87,4 +90,4 @@ const detail = await runtime.entity.read.by("item", {
     mode: "detail",
 });
 
-console.log(detail.data);
+log.info("example.runtime", "result", { data: detail.data });

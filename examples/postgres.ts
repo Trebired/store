@@ -5,6 +5,9 @@ import {
   createStore,
   defineEntityRegistry,
 } from "#k8n9w5v1p2q0";
+import { resolveLogger } from "@package/logger-adapter";
+
+const log = resolveLogger({ source: "@trebired/store" });
 
 const entities = defineEntityRegistry({
     documents: {
@@ -51,5 +54,5 @@ const all = await store.entity.read.all("documents", {
     },
 });
 
-console.log(all.data);
+log.info("example.postgres", "result", { data: all.data });
 await pool.end();

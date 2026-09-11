@@ -5,6 +5,9 @@ import {
   defineEntityRegistry,
 } from "#k8n9w5v1p2q0";
 import type { ModeEnricherHook, Store } from "#k8n9w5v1p2q0";
+import { resolveLogger } from "@package/logger-adapter";
+
+const log = resolveLogger({ source: "@trebired/store" });
 
 const entities = defineEntityRegistry({
     documents: {
@@ -165,4 +168,10 @@ const repair = await store.repair.orphansAndDuplicates({
     ],
 });
 
-console.log(document.data, activeDocuments.data, comments.data, openItems.data, repair);
+log.info("example.basic", "result", {
+    document: document.data,
+    activeDocuments: activeDocuments.data,
+    comments: comments.data,
+    openItems: openItems.data,
+    repair,
+});

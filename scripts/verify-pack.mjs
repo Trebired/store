@@ -2,6 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { resolveLogger } from "@package/logger-adapter";
+
+const log = resolveLogger({ source: "@trebired/store" });
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const tempRoot = path.join(rootDir, ".tmp", "verify-pack");
@@ -21,7 +24,7 @@ async function main() {
   validatePackedEntrypoints(packageJson, tarballEntries);
   validatePackedImports(packageJson, tarballEntries);
   await runConsumerSmokeTest(tarballPath, packageJson.name);
-  console.log("Pack verification succeeded.");
+  log.info("verify-pack", "Pack verification succeeded.");
 }
 
 async function resetTempRoot() {

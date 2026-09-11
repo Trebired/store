@@ -6,6 +6,9 @@ import {
   createStoreRuntime,
   defineEntityRegistry,
 } from "#k8n9w5v1p2q0";
+import { resolveLogger } from "@package/logger-adapter";
+
+const log = resolveLogger({ source: "@trebired/store" });
 
 const database = new Database(":memory:");
 
@@ -84,5 +87,5 @@ const runtimeRead = await runtime.entity.read.by("users", {
     mode: "raw",
 });
 
-console.log(directRead.data, runtimeRead.data);
+log.info("example.sqlite", "result", { directRead: directRead.data, runtimeRead: runtimeRead.data });
 database.close();
