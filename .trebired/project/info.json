@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "category": "package",
+  "subcategory": "data",
+  "status": "active",
+  "npm": "@trebired/store",
+  "description": {
+    "en": "A typed entity store for Bun, with SQLite and scoped JSONB storage.",
+    "cs": "Typované úložiště entit pro Bun se SQLite a rozsahovým JSONB úložištěm."
+  }
+}
